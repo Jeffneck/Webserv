@@ -1,17 +1,32 @@
+CAS NORMAUX
+//pas ok car le socket se ferme apres le 1er appel et la connexion devrait etre persistante ?
+curl http://127.0.0.1:9090/ 
+
+
+
+
+
+
+
 1. 400 Bad Request (400 - Mauvaise requête)
 Situations possibles :
 
 Requête malformée : Le client envoie une requête HTTP avec une syntaxe incorrecte, ce qui empêche le serveur de la comprendre. Par exemple, une ligne de requête incomplète ou des en-têtes mal formatés.
 
 echo -e "GET / HTTP/1.1\nHost: 127.0.0.1:9090\n\n" | nc 127.0.0.1 9090
-//entete host vide
+//entete host vide OK
 curl -v http://127.0.0.1:9090 -H "Host:"
-//sans entete host
+//sans entete host SEGFAULT
 curl -v --http1.1 http://127.0.0.1:9090 -H "Host"
 
 
 En-têtes invalides : Les en-têtes de la requête contiennent des valeurs invalides ou incohérentes, comme un en-tête Content-Length négatif ou non numérique.
-curl -v -X POST http://127.0.0.1:9090 -H "Content-Length: -10" -d "test"
+
+// cas ou cela fonctionne OK
+curl -v -X POST http://127.0.0.1:9090/cgi-bin/contactForm.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
+
+//cas ou cela ne fonctionne pas car Content-Length est trop court
+curl -v -X POST http://127.0.0.1:9090/cgi-bin/display.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 Encodage incorrect : Le corps de la requête est encodé dans un format que le serveur ne peut pas décoder, ou l'en-tête Content-Encoding spécifie un encodage non supporté.
 curl -v http://127.0.0.1:9090 -H "Content-Encoding: unsupported-encoding"

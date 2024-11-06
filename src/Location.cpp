@@ -15,6 +15,7 @@ Location::Location(const Server &server, const std::string &path)
       allowedMethods_(),             
       redirection_(""),               
       autoIndex_(false),             
+      cgiEnable_(false),             
       cgiExtension_(""),             
       uploadEnable_(false),            
       uploadStore_("")                 

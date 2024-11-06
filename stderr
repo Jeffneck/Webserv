@@ -1,0 +1,11 @@
+==97736== Memcheck, a memory error detector
+==97736== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==97736== Using Valgrind-3.20.0 and LibVEX; rerun with -h for copyright info
+==97736== Command: ./test_webserv
+==97736== 
+RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:33315
+RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:33315
+RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:33315
+RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:33315
+RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:33315
+RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:33315

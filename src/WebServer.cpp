@@ -154,7 +154,7 @@ void WebServer::runEventLoop() {
         }
 
         // Nettoyage des sockets fermées
-        dataHandler_.removeClosedSockets();
+        // dataHandler_.removeClosedSockets();
     }
 }
 

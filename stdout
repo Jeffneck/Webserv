@@ -1,0 +1,311 @@
+[0;32mRoot global: nginxApp/SimpleWebsite/
+client_max_body_size global: 0
+error_page 400 : /static/error_pages/400BadRequest.html
+error_page 403 : /static/error_pages/403Forbidden.html
+error_page 404 : /static/error_pages/404NotFound.html
+error_page 405 : /static/error_pages/405MethodNotAllowed.html
+error_page 500 : /static/error_pages/500InternalServerError.html
+error_page 501 : /static/error_pages/501InternalServerError.html
+error_page 502 : /static/error_pages/502BadGateway.html
+error_page 503 : /static/error_pages/503ServiceUnavailable.html
+error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Server [0] :
+  listen: 127.0.0.1:9090
+  server_name: localhost
+  error_page 400 : /static/error_pages/400BadRequest.html
+  error_page 403 : /static/error_pages/403Forbidden.html
+  error_page 404 : /static/error_pages/404NotFound.html
+  error_page 405 : /static/error_pages/405MethodNotAllowed.html
+  error_page 500 : /static/error_pages/500InternalServerError.html
+  error_page 501 : /static/error_pages/501InternalServerError.html
+  error_page 502 : /static/error_pages/502BadGateway.html
+  error_page 503 : /static/error_pages/503ServiceUnavailable.html
+  error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /:
+    root: nginxApp/SimpleWebsite/
+    index: static/index.html
+    autoindex: off
+    cgi enabled: off
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /cgi-bin/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: off
+    cgi enabled: on
+    cgi_pass: .py
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /images/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: on
+    cgi enabled: off
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /cgi-bin/uploads/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: on
+    cgi enabled: off
+    allowed_methods: GET POST
+    upload_enable: on
+    upload_store: nginxApp/SimpleWebsite/cgi-bin/uploads/
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /cgi-bin/forms/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: on
+    cgi enabled: off
+    allowed_methods: DENY
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /static/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: on
+    cgi enabled: off
+    allowed_methods: GET
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /redirection1/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: off
+    cgi enabled: off
+    redirection: http://127.0.0.1:8080/
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /redirection2/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: off
+    cgi enabled: off
+    redirection: http://127.0.0.1:8081/
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /redirection3/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: off
+    cgi enabled: off
+    redirection: http://127.0.0.1:8082/
+    upload_enable: off
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /static/upload.html:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: off
+    cgi enabled: off
+    allowed_methods: GET POST
+    upload_enable: on
+    upload_store: cgi-bin/uploads/
+    client_max_body_size: 10
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Server [1] :
+  listen: 127.0.0.1:8081
+  server_name: redirhost
+  error_page 400 : /static/error_pages/400BadRequest.html
+  error_page 403 : /static/error_pages/403Forbidden.html
+  error_page 404 : /static/error_pages/404NotFound.html
+  error_page 405 : /static/error_pages/405MethodNotAllowed.html
+  error_page 500 : /static/error_pages/500InternalServerError.html
+  error_page 501 : /static/error_pages/501InternalServerError.html
+  error_page 502 : /static/error_pages/502BadGateway.html
+  error_page 503 : /static/error_pages/503ServiceUnavailable.html
+  error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /:
+    root: nginxApp/SimpleWebsite/
+    index: static/redirect.html
+    autoindex: off
+    cgi enabled: off
+    upload_enable: off
+    client_max_body_size: 0
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Server [2] :
+  listen: 127.0.0.1:8082
+  server_name: unallowMethodshost
+  error_page 400 : /static/error_pages/400BadRequest.html
+  error_page 403 : /static/error_pages/403Forbidden.html
+  error_page 404 : /static/error_pages/404NotFound.html
+  error_page 405 : /static/error_pages/405MethodNotAllowed.html
+  error_page 500 : /static/error_pages/500InternalServerError.html
+  error_page 501 : /static/error_pages/501InternalServerError.html
+  error_page 502 : /static/error_pages/502BadGateway.html
+  error_page 503 : /static/error_pages/503ServiceUnavailable.html
+  error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /:
+    root: nginxApp/SimpleWebsite/
+    index: static/index.html
+    autoindex: off
+    cgi enabled: off
+    upload_enable: off
+    client_max_body_size: 0
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /cgi-bin/uploads/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: on
+    cgi enabled: off
+    allowed_methods: GET
+    upload_enable: off
+    client_max_body_size: 0
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+  Location /images/:
+    root: nginxApp/SimpleWebsite/
+    index: 
+    autoindex: off
+    cgi enabled: off
+    allowed_methods: DELETE
+    upload_enable: off
+    client_max_body_size: 0
+    error_page 400 : /static/error_pages/400BadRequest.html
+    error_page 403 : /static/error_pages/403Forbidden.html
+    error_page 404 : /static/error_pages/404NotFound.html
+    error_page 405 : /static/error_pages/405MethodNotAllowed.html
+    error_page 500 : /static/error_pages/500InternalServerError.html
+    error_page 501 : /static/error_pages/501InternalServerError.html
+    error_page 502 : /static/error_pages/502BadGateway.html
+    error_page 503 : /static/error_pages/503ServiceUnavailable.html
+    error_page 504 : /static/error_pages/504GatewayTimeout.html
+[0mConfiguration chargée avec succès.
+Server started with 3 servers.
+Serveur démarré.
+WebServer::runEventLoop(): Démarrage de la boucle d'événements.
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;33msend data[0m
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;33msend data[0m
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;33msend data[0m
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;33msend data[0m
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;33msend data[0m
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;33msend data[0m
+[0;31mDataSocket::closeSocket: Socket closed.[0m

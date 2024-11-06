@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
     // Vérification des arguments
     std::string configFile;
     if (argc == 1) {
-        configFile = "./config/default.conf";
+        configFile = "./nginxApp/webserv.conf";
     }
     else if (argc == 2) {
         configFile = argv[1];

@@ -1,3 +1,6 @@
+Checker avec valgrind : 
+valgrind --leak-check=full ./test_webserv > stdout 2>stderr
+
 Vérification basique avec curl :
 curl http://127.0.0.1:8080
 Tester avec différentes méthodes HTTP :

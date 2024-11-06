@@ -2,6 +2,13 @@ Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
 => prendre en compte cette directive dans les requetes chrome
 
 
+ajouter l' entete : connexion close 
+std::string response = "HTTP/1.1 200 OK\r\n"
+                       "Content-Type: text/html\r\n"
+                       "Connection: close\r\n"
+                       "\r\n"
+                       "<html><body>Hello, world!</body></html>";
+
 upload des fichiers
 
 
