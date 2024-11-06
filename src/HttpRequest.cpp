@@ -43,22 +43,21 @@ bool HttpRequest::parseRequest() {
     while (state_ != COMPLETE && std::getline(stream, line)) {
         if (state_ == REQUEST_LINE) {
             if (line.empty()) {
-                return false; // Attendre plus de données
+                return false;
             }
             parseRequestLine(line);
             state_ = HEADERS;
         } else if (state_ == HEADERS) {
             if (line == "\r" || line.empty()) {
                 headersParsed_ = true;
-
                 std::map<std::string, std::string>::iterator it = headers_.find("Content-Length");
                 if (it != headers_.end()) {
                     std::istringstream lengthStream(it->second);
-                    size_t length;
-                    if (!(lengthStream >> length)) {
-                        length = 0;  // Valeur par défaut si la conversion échoue
+                    int length;
+                    if (!(lengthStream >> length) || length < 0) {
+                        return false;  // Rejeter les requêtes avec un `Content-Length` invalide (négatif ou non numérique) Attention il faut throw une erreur html apres
                     }
-                    contentLength_ = length;
+                    contentLength_ = static_cast<size_t>(length);
                 } else {
                     contentLength_ = 0;
                 }
