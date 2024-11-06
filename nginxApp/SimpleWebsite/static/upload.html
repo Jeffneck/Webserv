@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>TELEVERSEMENT</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 50px; }
+        nav a { margin: 0 15px; text-decoration: none; color: #333; }
+        nav a:hover { color: #007BFF; }
+        .upload-form { max-width: 500px; margin: auto; }
+        input[type="file"] { margin: 20px 0; }
+        input[type="submit"] { padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <div class="upload-form">
+        <h1>Téléverser un Fichier</h1>
+        <form action="/cgi-bin/uploads/" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <br>
+            <input type="submit" value="Téléverser">
+        </form>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Webserv. Ceci est un footer</p>
+    </footer>
+</body>
+</html>

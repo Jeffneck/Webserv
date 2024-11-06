@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONTACT</title>
+</head>
+<body>
+    <h1>Contactez-nous</h1>
+    <p>Vous pouvez nous contacter via le formulaire ci-dessous.</p>
+    <form action="/cgi-bin/contactForm.py" method="post">
+        <input type="text" name="name" placeholder="Votre nom" required>
+        <input type="email" name="email" placeholder="Votre email" required>
+        <textarea name="message" placeholder="Votre message" required></textarea>
+        <button type="submit">Envoyer</button>
+    </form>
+    <p>Vous pouvez aussi nous contacter via une requete GET comme ci dessous (jetez un oeil a l'url generee)</p>
+    <a href="/cgi-bin/contactForm.py?name=Dieu&email=dieu_corporation@gmail.com&message=Hello%20MY%20World">Cliquez cliquez</a>
+
+
+</body>
+</html>
+
