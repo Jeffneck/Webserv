@@ -1,4 +1,5 @@
 #include "../includes/DataSocketHandler.hpp"
+#include <assert.h>
 
 DataSocketHandler::DataSocketHandler() {
 }
@@ -13,13 +14,16 @@ void DataSocketHandler::addClientSocket(DataSocket* dataSocket) {
 
 void DataSocketHandler::removeClosedSockets() {
     for (std::vector<DataSocket*>::iterator it = clientSockets.begin(); it != clientSockets.end(); ) {
-        if ((*it)->getSocket() == -1) {
-            delete *it;
-            it = clientSockets.erase(it);
-        } else {
-            ++it;
-        }
+    if ((*it)->getSocket() == -1) {
+        DataSocket* temp = *it;
+        delete *it;
+        it = clientSockets.erase(it);
+        // Vérifiez si l'objet est utilisé après suppression (hypothétique, dépend du contexte de votre programme)
+        assert(temp->getSocket() == -1 && "DataSocket accessed after deletion!");
+    } else {
+        ++it;
     }
+}
 }
 
 const std::vector<DataSocket*>& DataSocketHandler::getClientSockets() const {

@@ -401,6 +401,7 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         std::string contentType = getMimeType(extension);
         if (!contentType.empty()) {
             response.setHeader("Content-Type", contentType);
+            response.setHeader("Connexion", "close");
         }
     }
 
@@ -679,7 +680,7 @@ HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, cons
     std::cout << RED << "RequestHandler::generateAutoIndex" << RESET << std::endl; // test
     std::stringstream ss;
 
-    // Génération du contenu HTML
+    
     ss << "<html><head><title>Index of " << requestPath << "</title></head><body>";
     ss << "<h1>Index of " << requestPath << "</h1><ul>";
 
@@ -699,13 +700,14 @@ HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, cons
 
     ss << "</ul></body></html>";
 
-    // Créer la réponse HTTP
+    
     HttpResponse response;
-    response.setStatusCode(200); // Code d'état 200 OK
-    response.setBody(ss.str()); // Corps de la réponse
-    response.setHeader("Content-Type", "text/html; charset=UTF-8"); // Définir le type de contenu
+    response.setStatusCode(200);
+    response.setBody(ss.str());
+    response.setHeader("Content-Type", "text/html; charset=UTF-8");
+    response.setHeader("Connexion", "close");
 
-    return response; // Retourner l'objet HttpResponse
+    return response; 
 }
 
 std::string RequestHandler::getMimeType(const std::string& extension) const {

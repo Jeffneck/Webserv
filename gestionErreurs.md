@@ -25,8 +25,8 @@ En-têtes invalides : Les en-têtes de la requête contiennent des valeurs inval
 // cas ou cela fonctionne OK
 curl -v -X POST http://127.0.0.1:9090/cgi-bin/contactForm.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
 
-//cas ou cela ne fonctionne pas car Content-Length est trop court
-curl -v -X POST http://127.0.0.1:9090/cgi-bin/display.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
+//cas ou cela ne fonctionne pas car Content-Length est negatif
+curl -v -X POST http://127.0.0.1:9090/cgi-bin/display.py -H "Content-Length: -10" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 Encodage incorrect : Le corps de la requête est encodé dans un format que le serveur ne peut pas décoder, ou l'en-tête Content-Encoding spécifie un encodage non supporté.
 curl -v http://127.0.0.1:9090 -H "Content-Encoding: unsupported-encoding"

@@ -305,7 +305,3 @@ Request Path: / Matched location: /
 Serving file: nginxApp/SimpleWebsite/static/index.html
 [0;33msend data[0m
 [0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: / Matched location: /
-Serving file: nginxApp/SimpleWebsite/static/index.html
-[0;33msend data[0m
-[0;31mDataSocket::closeSocket: Socket closed.[0m

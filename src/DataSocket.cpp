@@ -100,6 +100,8 @@ void DataSocket::closeSocket() {
         close(client_fd_);
         client_fd_ = -1;
         std::cout << RED <<"DataSocket::closeSocket: Socket closed."<< RESET << std::endl;
+    } else {
+        std::cout <<RED << "Tentative de fermeture d'une socket déjà fermée." << RESET << std::endl;
     }
 }
 

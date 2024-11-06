@@ -90,7 +90,7 @@ void WebServer::runEventLoop() {
         }
 
         // Appel à poll()
-        int timeout = 1000; // Temps ms avant de sortir de l' etat de poll
+        int timeout = 5000; // Temps ms avant de sortir de l' etat de poll
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
         if (ret < 0) {
             // perror("poll");
@@ -153,7 +153,7 @@ void WebServer::runEventLoop() {
             }
         }
 
-        // Nettoyage des sockets fermées
+        // Nettoyage des sockets fermées attention ne pas reactiver a moins d' avoir modifie la logique de fermeture car  les sockets sont deja fermes avant donc cela genere des problemes
         // dataHandler_.removeClosedSockets();
     }
 }
