@@ -186,9 +186,7 @@ void DataSocket::readFromCgiPipe() {
                 closeCgiPipe();
 
                 HttpResponse response;
-                response.setStatusCode(500);
-                response.setBody("Internal Server Error");
-                response.setHeader("Content-Type", "text/html; charset=UTF-8");
+                response = handleError(500, getAssociatedServer()->getErrorPageFullPath(500));
                 sendBuffer_ = response.generateResponse();
                 sendBufferOffset_ = 0;
                 cgiOutputBuffer_.clear();
@@ -215,11 +213,7 @@ void DataSocket::terminateCgiProcess() {
         cgiProcess_->terminate();
         closeCgiPipe();
         // Envoyer une réponse d'erreur au client
-        HttpResponse response = handleError(500, associatedServers_[0]->getErrorPageFullPath(500));//test
-        // HttpResponse response;
-        // response.setStatusCode(500);
-        // response.setBody("Internal Server Error (CGI timeout)");
-        // response.setHeader("Content-Type", "text/html; charset=UTF-8");
+        HttpResponse response = handleError(500, getAssociatedServer()->getErrorPageFullPath(500));
         sendBuffer_ = response.generateResponse();
         sendBufferOffset_ = 0;
         cgiOutputBuffer_.clear();

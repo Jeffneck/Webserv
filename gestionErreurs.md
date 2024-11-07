@@ -6,6 +6,10 @@ CHECKS FONCTIONNELS
 
 Vérification basique avec curl :
 curl http://127.0.0.1:8080
+
+Acces au second serveur sur le meme ip:port avec curl :
+curl http://127.0.0.1:8080 -H "Host:anotherhost"
+
 Tester avec différentes méthodes HTTP :
 GET :
 curl -X GET http://127.0.0.1:8080
@@ -15,6 +19,7 @@ PUT :
 curl -X PUT http://127.0.0.1:8080 -d 'key=value'
 DELETE :
 curl -X DELETE http://127.0.0.1:8080
+
 Tester avec des en-têtes personnalisés :
 curl -X GET http://127.0.0.1:8080 -H "Authorization: Bearer token"
 Envoyer des données JSON dans un POST :

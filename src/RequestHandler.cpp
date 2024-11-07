@@ -512,7 +512,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
 
     // Vérifier que le Content-Type est multipart/form-data
     std::string contentType = request.getHeader("Content-Type");
-    if (contentType.find("multipart/form-data") != 0) {
+    if (contentType.find("multipart/form-data") != 0 ) {
         std::string errorPagePath = getErrorPageFullPath(400, location, server);
         response = handleError(400, errorPagePath);
         return response;
@@ -586,7 +586,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
         }
     }
 
-    response.setStatusCode(200);
+    response.setStatusCode(201);
     response.setBody("File upload successful.");
     return response;
 }
