@@ -1,6 +1,36 @@
-CAS NORMAUX
-//pas ok car le socket se ferme apres le 1er appel et la connexion devrait etre persistante ?
-curl http://127.0.0.1:9090/ 
+Checker avec valgrind : 
+valgrind --leak-check=full ./test_webserv > stdout 2>stderr
+
+
+CHECKS FONCTIONNELS 
+
+Vérification basique avec curl :
+curl http://127.0.0.1:8080
+Tester avec différentes méthodes HTTP :
+GET :
+curl -X GET http://127.0.0.1:8080
+POST :
+curl -X POST http://127.0.0.1:8080 -d 'key=value'
+PUT :
+curl -X PUT http://127.0.0.1:8080 -d 'key=value'
+DELETE :
+curl -X DELETE http://127.0.0.1:8080
+Tester avec des en-têtes personnalisés :
+curl -X GET http://127.0.0.1:8080 -H "Authorization: Bearer token"
+Envoyer des données JSON dans un POST :
+curl -X POST http://127.0.0.1:8080 -H "Content-Type: application/json" -d '{"key":"value"}'
+Tester la réponse avec verbose :
+curl -v http://127.0.0.1:8080
+Tester le délai d'attente (timeout) :
+curl --max-time 5 http://127.0.0.1:8080
+Vérifier si le serveur redirige (301 ou 302) :
+curl -I http://127.0.0.1:8080
+Télécharger un fichier via HTTP :
+curl -O http://127.0.0.1:8080/fichier.txt
+Tester une requête HTTPS (si applicable) :
+curl -k https://127.0.0.1:8080
+Tester avec telnet pour un test basique de connexion :
+telnet 127.0.0.1 8080
 
 
 
@@ -13,63 +43,63 @@ Situations possibles :
 
 Requête malformée : Le client envoie une requête HTTP avec une syntaxe incorrecte, ce qui empêche le serveur de la comprendre. Par exemple, une ligne de requête incomplète ou des en-têtes mal formatés.
 
-echo -e "GET / HTTP/1.1\nHost: 127.0.0.1:9090\n\n" | nc 127.0.0.1 9090
+echo -e "GET / HTTP/1.1\nHost: 127.0.0.1:8080\n\n" | nc 127.0.0.1 8080
 //entete host vide OK
-curl -v http://127.0.0.1:9090 -H "Host:"
-//sans entete host SEGFAULT
-curl -v --http1.1 http://127.0.0.1:9090 -H "Host"
+curl -v http://127.0.0.1:8080 -H "Host:"
+//sans entete host OK
+curl -v --http1.1 http://127.0.0.1:8080 -H "Host"
 
 
 En-têtes invalides : Les en-têtes de la requête contiennent des valeurs invalides ou incohérentes, comme un en-tête Content-Length négatif ou non numérique.
 
 // cas ou cela fonctionne OK
-curl -v -X POST http://127.0.0.1:9090/cgi-bin/contactForm.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
+curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 //cas ou cela ne fonctionne pas car Content-Length est negatif
-curl -v -X POST http://127.0.0.1:9090/cgi-bin/display.py -H "Content-Length: -10" -d "name=ntest&email=etest%40test.com&message=mtest"
+curl -v -X POST http://127.0.0.1:8080/cgi-bin/display.py -H "Content-Length: -10" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 Encodage incorrect : Le corps de la requête est encodé dans un format que le serveur ne peut pas décoder, ou l'en-tête Content-Encoding spécifie un encodage non supporté.
-curl -v http://127.0.0.1:9090 -H "Content-Encoding: unsupported-encoding"
+curl -v http://127.0.0.1:8080 -H "Content-Encoding: unsupported-encoding"
 
 Requête trop longue : La requête dépasse la taille maximale que le serveur est configuré pour accepter.
-curl -v -X POST http://127.0.0.1:9090 -d "$(head -c 1000000 /dev/urandom | base64)"
+curl -v -X POST http://127.0.0.1:8080 -d "$(head -c 1000000 /dev/urandom | base64)"
 
 2. 401 Unauthorized (401 - Non autorisé)
 Situations possibles :
 
 Authentification requise : Si vous implémentez une protection par authentification pour certaines ressources, le serveur renverra ce code lorsque le client n'a pas fourni de credentials valides.
-curl -v http://127.0.0.1:9090/protected-resource
+curl -v http://127.0.0.1:8080/protected-resource
 
 Accès à des ressources protégées : Le client tente d'accéder à une page ou un fichier nécessitant une authentification, mais les informations d'authentification sont manquantes ou invalides.
-curl -v http://127.0.0.1:9090/protected-resource --user fakeuser:fakepassword
+curl -v http://127.0.0.1:8080/protected-resource --user fakeuser:fakepassword
 
 3. 403 Forbidden (403 - Accès interdit)
 Situations possibles :
 
 Permissions de fichier insuffisantes : Les permissions du système de fichiers empêchent le serveur de lire le fichier demandé, même si le chemin est correct.
 chmod 000 /chemin/vers/webroot/secret.html
-curl -v http://127.0.0.1:9090/secret.html
+curl -v http://127.0.0.1:8080/secret.html
 
 Interdiction de lister le contenu : Si l'autoindex est désactivé pour un répertoire et qu'il n'y a pas de fichier d'index (comme index.html), le serveur peut renvoyer une erreur 403.
-curl -v http://127.0.0.1:9090/private-directory/
+curl -v http://127.0.0.1:8080/private-directory/
 
 4. 404 Not Found (404 - Page non trouvée)
 Situations possibles :
 
 Ressource inexistante : Le client demande une page, un fichier ou une ressource qui n'existe pas sur le serveur.
-curl -v http://127.0.0.1:9090/nonexistent-page.html
+curl -v http://127.0.0.1:8080/nonexistent-page.html
 
 Chemin incorrect : L'URL fournie par le client est incorrecte ou contient des erreurs de frappe.
-curl -v http://127.0.0.1:9090/wrongpath/
+curl -v http://127.0.0.1:8080/wrongpath/
 
 5. 405 Method Not Allowed (405 - Méthode non autorisée)
 Situations possibles :
 
 Méthode HTTP non supportée : Le client utilise une méthode HTTP (comme PUT, DELETE, PATCH) que le serveur ne reconnaît pas ou n'accepte pas pour la ressource demandée.
-curl -v -X TRACE http://127.0.0.1:9090/
+curl -v -X TRACE http://127.0.0.1:8080/
 
 Restriction sur les méthodes : Le serveur est configuré pour n'accepter que certaines méthodes pour une ressource donnée. Par exemple, une page qui n'accepte que GET et HEAD, et le client envoie une requête POST.
-curl -v -X DELETE http://127.0.0.1:9090/index.html
+curl -v -X DELETE http://127.0.0.1:8080/index.html
 
 6. 408 Request Timeout (408 - Délai d'attente dépassé)
 Situations possibles :

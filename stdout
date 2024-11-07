@@ -10,7 +10,7 @@ error_page 502 : /static/error_pages/502BadGateway.html
 error_page 503 : /static/error_pages/503ServiceUnavailable.html
 error_page 504 : /static/error_pages/504GatewayTimeout.html
   Server [0] :
-  listen: 127.0.0.1:9090
+  listen: 127.0.0.1:8080
   server_name: localhost
   error_page 400 : /static/error_pages/400BadRequest.html
   error_page 403 : /static/error_pages/403Forbidden.html
@@ -285,22 +285,6 @@ error_page 504 : /static/error_pages/504GatewayTimeout.html
 Server started with 3 servers.
 Serveur démarré.
 WebServer::runEventLoop(): Démarrage de la boucle d'événements.
-Request Path: / Matched location: /
-Serving file: nginxApp/SimpleWebsite/static/index.html
-[0;33msend data[0m
-[0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: / Matched location: /
-Serving file: nginxApp/SimpleWebsite/static/index.html
-[0;33msend data[0m
-[0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: / Matched location: /
-Serving file: nginxApp/SimpleWebsite/static/index.html
-[0;33msend data[0m
-[0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: / Matched location: /
-Serving file: nginxApp/SimpleWebsite/static/index.html
-[0;33msend data[0m
-[0;31mDataSocket::closeSocket: Socket closed.[0m
 Request Path: / Matched location: /
 Serving file: nginxApp/SimpleWebsite/static/index.html
 [0;33msend data[0m

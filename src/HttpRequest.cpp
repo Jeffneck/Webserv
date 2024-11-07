@@ -54,7 +54,9 @@ bool HttpRequest::parseRequest() {
                 if (it != headers_.end()) {
                     std::istringstream lengthStream(it->second);
                     int length;
+                    //verifier la validite de la requete dans request handler
                     if (!(lengthStream >> length) || length < 0) {
+                        std::cout << "HttpRequest::parseRequest content length < 0 detectee"<<std::endl;//debug
                         return false;  // Rejeter les requêtes avec un `Content-Length` invalide (négatif ou non numérique) Attention il faut throw une erreur html apres
                     }
                     contentLength_ = static_cast<size_t>(length);
