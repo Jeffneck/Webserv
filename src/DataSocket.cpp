@@ -10,8 +10,9 @@
 
 DataSocket::DataSocket(int fd, const std::vector<Server*>& servers, const Config& config)
     : client_fd_(fd), associatedServers_(servers), requestComplete_(false), config_(config),
-      sendBufferOffset_(0), cgiProcess_(NULL), cgiPipeFd_(-1), cgiComplete_(true) {
-}
+      sendBufferOffset_(0), cgiProcess_(NULL), cgiPipeFd_(-1), cgiComplete_(true),
+      shouldCloseAfterSend_(false) { }
+
 
 DataSocket::~DataSocket() {
     closeSocket();
@@ -30,7 +31,18 @@ bool DataSocket::receiveData() {
         httpRequest_.appendData(data);
 
         if (httpRequest_.parseRequest()) {
+            if (httpRequest_.hasParseError()) {
+                handleParseError(httpRequest_.getParseErrorCode());
+                // Ne pas fermer immédiatement, permettre l'envoi de la réponse
+                return true;
+            }
             requestComplete_ = httpRequest_.isComplete();
+        } else {
+            if (httpRequest_.hasParseError()) {
+                handleParseError(httpRequest_.getParseErrorCode());
+                // Ne pas fermer immédiatement, permettre l'envoi de la réponse
+                return true;
+            }
         }
         return true;
     } else if (bytesRead == 0) {
@@ -38,6 +50,31 @@ bool DataSocket::receiveData() {
     } else {
         return false;
     }
+}
+
+void DataSocket::handleParseError(int errorCode) {
+    std::cerr << "DataSocket::handleParseError: Detected parse error code " << errorCode << std::endl;
+    RequestResult result;
+    const Server* server = getAssociatedServer();
+    if (server) {
+        result.response = handleError(errorCode, server->getErrorPageFullPath(errorCode));
+    } else {
+        result.response = handleError(errorCode, config_.getErrorPageFullPath(errorCode));
+    }
+    sendBuffer_ = result.response.generateResponse();
+    sendBufferOffset_ = 0;
+    // Indiquer que la connexion doit être fermée après l'envoi
+    shouldCloseAfterSend_ = true;
+}
+
+const Server* DataSocket::getAssociatedServer() const {
+    // Implémentez cette méthode pour retourner le serveur associé à cette DataSocket
+    // Cela dépend de votre architecture, mais souvent vous pouvez obtenir le serveur à partir des associations
+    // passées lors de la création de DataSocket dans WebServer::runEventLoop()
+    if (!associatedServers_.empty()) {
+        return associatedServers_[0]; // Exemple simplifié
+    }
+    return NULL;
 }
 
 bool DataSocket::isRequestComplete() const {
@@ -66,20 +103,19 @@ void DataSocket::processRequest() {
 }
 
 bool DataSocket::sendData() {
-    // std::cout << "DataSocket::sendData" <<std::endl;//test
     if (sendBuffer_.empty()) {
         return true;
     }
 
-    // Imprimer le contenu de sendBuffer_ qui sera envoyé
-    // std::cout << YELLOW << sendBuffer_.substr(sendBufferOffset_) << RESET << std::endl;//debug test
-    std::cout << YELLOW <<  "send data"<< RESET << std::endl;//debug test
     ssize_t bytesSent = send(client_fd_, sendBuffer_.c_str() + sendBufferOffset_, sendBuffer_.size() - sendBufferOffset_, 0);
     if (bytesSent > 0) {
         sendBufferOffset_ += bytesSent;
         if (sendBufferOffset_ >= sendBuffer_.size()) {
             sendBuffer_.clear();
             sendBufferOffset_ = 0;
+            if (shouldCloseAfterSend_) {
+                return false;
+            }
             return true;
         }
     } else if (bytesSent == 0) {

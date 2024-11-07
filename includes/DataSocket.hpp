@@ -17,12 +17,14 @@ public:
     ~DataSocket();
 
     bool receiveData();
+    void handleParseError(int errorCode);
     bool isRequestComplete() const;
     void processRequest();
     bool sendData();
     bool hasDataToSend() const;
     void closeSocket();
     int getSocket() const;
+    const Server* getAssociatedServer() const;
 
     // CGI handling methods
     bool hasCgiProcess() const;
@@ -50,6 +52,7 @@ private:
     int cgiPipeFd_;
     bool cgiComplete_;
     std::string cgiOutputBuffer_;
+    bool shouldCloseAfterSend_;
 };
 
 #endif // DATASOCKET_HPP

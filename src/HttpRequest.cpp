@@ -8,15 +8,18 @@
 
 HttpRequest::HttpRequest()
     : rawData_(""), 
-    method_(""), 
-    rawPath_(""), 
-    path_(""), 
-    queryString_(""), 
-    httpVersion_(""), 
-    body_(""), 
-    contentLength_(0), 
-    headersParsed_(false), 
-    state_(REQUEST_LINE) {
+      method_(""), 
+      rawPath_(""), 
+      path_(""), 
+      queryString_(""), 
+      httpVersion_(""), 
+      body_(""), 
+      contentLength_(0), 
+      headersParsed_(false), 
+      state_(REQUEST_LINE),
+      parseError_(false),
+      parseErrorCode_(0)
+{
 }
 
 HttpRequest::~HttpRequest() {
@@ -43,9 +46,17 @@ bool HttpRequest::parseRequest() {
     while (state_ != COMPLETE && std::getline(stream, line)) {
         if (state_ == REQUEST_LINE) {
             if (line.empty()) {
+                // Requête incomplète
                 return false;
             }
             parseRequestLine(line);
+            // Vérifier la version HTTP
+            if (httpVersion_ != "HTTP/1.1" && httpVersion_ != "HTTP/1.0") {
+                std::cerr << "Unsupported HTTP version: " << httpVersion_ << std::endl;
+                parseError_ = true;
+                parseErrorCode_ = 505; // HTTP Version Not Supported
+                return false;
+            }
             state_ = HEADERS;
         } else if (state_ == HEADERS) {
             if (line == "\r" || line.empty()) {
@@ -54,14 +65,27 @@ bool HttpRequest::parseRequest() {
                 if (it != headers_.end()) {
                     std::istringstream lengthStream(it->second);
                     int length;
-                    //verifier la validite de la requete dans request handler
                     if (!(lengthStream >> length) || length < 0) {
-                        std::cout << "HttpRequest::parseRequest content length < 0 detectee"<<std::endl;//debug
-                        return false;  // Rejeter les requêtes avec un `Content-Length` invalide (négatif ou non numérique) Attention il faut throw une erreur html apres
+                        std::cerr << "Invalid Content-Length: " << it->second << std::endl;
+                        parseError_ = true;
+                        parseErrorCode_ = 400; // Bad Request
+                        return false;
                     }
                     contentLength_ = static_cast<size_t>(length);
                 } else {
                     contentLength_ = 0;
+                }
+
+                // Vérifier la présence de Content-Type si la méthode est POST
+                if (method_ == "POST") {
+                    if (headers_.find("Content-Type") == headers_.end()) {
+                        std::cerr << "Missing Content-Type header in POST request." << std::endl;
+                        parseError_ = true;
+                        parseErrorCode_ = 400; // Bad Request
+                        return false;
+                    }
+                    // Vous pouvez ajouter des vérifications supplémentaires sur le Content-Type ici
+                    //verifier que le content type est soit url encoded soit multipart form
                 }
 
                 state_ = (contentLength_ > 0) ? BODY : COMPLETE;
@@ -128,27 +152,6 @@ std::string HttpRequest::normalizePath(const std::string& path) const {
     return normalizedPath;
 }
 
-// void HttpRequest::parseRequestLine(const std::string& line) {
-//     std::istringstream lineStream(line);
-//     lineStream >> method_ >> path_ >> httpVersion_;
-
-//     // Supprimer le retour chariot de httpVersion_ s'il est présent
-//     if (!httpVersion_.empty() && httpVersion_[httpVersion_.size() - 1] == '\r') {
-//         httpVersion_.erase(httpVersion_.size() - 1);
-//     }
-
-//     // Retirer la query string du path_
-//     size_t queryPos = path_.find('?');
-//     if (queryPos != std::string::npos) {
-//         queryString_ = path_.substr(queryPos + 1); // Stocker la query string
-//         path_ = path_.substr(0, queryPos); // Garder uniquement la partie avant le '?'
-//     } else {
-//         queryString_.clear(); // Aucune query string, on vide la variable
-//     }
-
-//     // std::cout << "HttpRequest::parseRequestLine  : Parsed request line: " << method_ << " " << path_ << " " << httpVersion_ << std::endl; // test
-// }
-
 void HttpRequest::parseHeaderLine(const std::string& line) {
     std::string::size_type pos = line.find(':');
     if (pos != std::string::npos) {
@@ -196,6 +199,14 @@ const std::string& HttpRequest::getBody() const {
 
 std::string HttpRequest::getQueryString() const {
         return queryString_;
+}
+
+bool HttpRequest::hasParseError() const {
+    return parseError_;
+}
+
+int HttpRequest::getParseErrorCode() const {
+    return parseErrorCode_;
 }
 
 void HttpRequest::displayContent() const
