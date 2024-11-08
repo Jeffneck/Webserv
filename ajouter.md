@@ -15,3 +15,4 @@ listen pas dans config
 
 verifier les sockets ouverts en fin de process
 
+on ne devrait pas avoir a gerer l' erreur 
