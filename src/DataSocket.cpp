@@ -207,41 +207,43 @@ void DataSocket::readFromCgiPipe() {
         cgiOutputBuffer_.append(buffer, bytesRead);
         std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
     } else if (bytesRead == 0) {
-
-        // Vérifier le statut de sortie du CGI
-        int status = cgiProcess_->getExitStatus();
-        std::cout << "cgi status : "<<status<<std::endl;//debug
-        if (WIFEXITED(status)) {
-            int exitStatus = WEXITSTATUS(status);
-            if (exitStatus != 0) {
-                // CGI a échoué, renvoyer une erreur 502
-                std::cerr << "CGI process exited with error code: " << exitStatus << std::endl;
+        //mettre le contenu de ce block dans une fonction
+        if(cgiProcess_ && cgiProcess_->getExitStatus()){
+            // Vérifier le statut de sortie du CGI
+            int status = cgiProcess_->getExitStatus();
+            std::cout << "cgi status : "<<status<<std::endl;//debug
+            if (WIFEXITED(status)) {
+                int exitStatus = WEXITSTATUS(status);
+                if (exitStatus != 0) {
+                    // CGI a échoué, renvoyer une erreur 502
+                    std::cerr << "CGI process exited with error code: " << exitStatus << std::endl;
+                    HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
+                    sendBuffer_ = response.generateResponse();
+                    sendBufferOffset_ = 0;
+                } 
+            } else if (WIFSIGNALED(status)) {
+                // CGI s'est terminé suite à un signal, par exemple SIGSEGV
+                std::cerr << "CGI process was terminated by a signal." << std::endl;
                 HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
                 sendBuffer_ = response.generateResponse();
                 sendBufferOffset_ = 0;
             } else {
-                // CGI a réussi, envoyer la réponse
-                HttpResponse response;
-                response.setStatusCode(200);
-                response.setBody(cgiOutputBuffer_);
-                response.setHeader("Content-Type", "text/html; charset=UTF-8");
-                response.setHeader("Connection", "close");
+                // Autres types de terminaisons
+                std::cerr << "CGI process terminated abnormally." << std::endl;
+                HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
                 sendBuffer_ = response.generateResponse();
                 sendBufferOffset_ = 0;
-                cgiOutputBuffer_.clear();
             }
-        } else if (WIFSIGNALED(status)) {
-            // CGI s'est terminé suite à un signal, par exemple SIGSEGV
-            std::cerr << "CGI process was terminated by a signal." << std::endl;
-            HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
-            sendBuffer_ = response.generateResponse();
-            sendBufferOffset_ = 0;
         } else {
-            // Autres types de terminaisons
-            std::cerr << "CGI process terminated abnormally." << std::endl;
-            HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
+            // CGI a réussi, envoyer la réponse
+            HttpResponse response;
+            response.setStatusCode(200);
+            response.setBody(cgiOutputBuffer_);
+            response.setHeader("Content-Type", "text/html; charset=UTF-8");
+            response.setHeader("Connection", "close");
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
+            cgiOutputBuffer_.clear();
         }
         
         // EOF atteint, le processus CGI a terminé

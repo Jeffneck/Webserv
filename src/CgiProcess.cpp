@@ -11,12 +11,17 @@
 CgiProcess::CgiProcess(const std::string& scriptWorkingDir, const std::string& relativeFilePath,
                        const std::map<std::string, std::string>& scriptParams,
                        const std::vector<std::string>& envVars)
-    : pid_(-1), scriptWorkingDir_(scriptWorkingDir), relativeFilePath_(relativeFilePath), maxExecutionTime_(11)
+    : pid_(-1), 
+    scriptWorkingDir_(scriptWorkingDir), 
+    relativeFilePath_(relativeFilePath), 
+    maxExecutionTime_(11),
+    cgiExitStatus_(0)
 {
     createArgv(scriptParams);
     createEnvp(envVars);
     pipefd_[0] = pipefd_[1] = -1;
 }
+
 CgiProcess::~CgiProcess() {
     cleanupArgv();
     cleanupEnvp();
