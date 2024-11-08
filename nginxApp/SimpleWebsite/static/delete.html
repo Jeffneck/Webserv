@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SUPPRESSION DE FICHIER</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+        }
+
+        /* Barre de Navigation */
+        nav {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 0;
+            text-align: center;
+        }
+        nav a {
+            margin: 0 20px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        nav a:hover {
+            color: #ff9800;
+        }
+        .delete-form { 
+            max-width: 500px; 
+            margin: auto; 
+            background-color: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+        }
+        .delete-form h1 { 
+            text-align: center; 
+            color: #333; 
+        }
+        input[type="text"] { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 20px 0; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        input[type="submit"] { 
+            width: 100%; 
+            padding: 10px; 
+            background-color: #ec8910; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px; 
+        }
+        input[type="submit"]:hover { 
+            background-color: #ec8910; 
+        }
+        .message { 
+            max-width: 500px; 
+            margin: 20px auto; 
+            padding: 10px; 
+            border-radius: 4px; 
+            text-align: center; 
+            display: none; 
+        }
+        .success { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb; 
+        }
+        .error { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        footer { 
+            text-align: center; 
+            margin-top: 40px; 
+            color: #666; 
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/cgi-bin/uploads/">Autoindex des Téléversements</a>
+        <a href="/static/upload.html">Téléverser</a>
+        <a href="/static/delete.html">Supprimer</a>
+    </nav>
+    <div class="delete-form">
+        <h1>Supprimer un Fichier</h1>
+        <div id="message" class="message"></div>
+        <form id="deleteForm">
+            <label for="filename">Nom du Fichier à Supprimer :</label>
+            <input type="text" id="filename" name="filename" placeholder="Entrez le nom du fichier" required>
+            <input type="submit" value="Supprimer">
+        </form>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Webserv. Ceci est un footer</p>
+    </footer>
+
+    <script>
+        document.getElementById('deleteForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Empêche la soumission traditionnelle du formulaire
+
+            var filenameInput = document.getElementById('filename');
+            var filename = filenameInput.value.trim();
+
+            if (filename === '') {
+                showMessage('Veuillez entrer un nom de fichier.', 'error');
+                return;
+            }
+
+            // Confirmer la suppression
+            if (!confirm('Êtes-vous sûr de vouloir supprimer le fichier "' + filename + '" ?')) {
+                return;
+            }
+
+            // Envoyer la requête DELETE au serveur
+            fetch('/cgi-bin/uploads/' + encodeURIComponent(filename), {
+                method: 'DELETE'
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    return response.text(); // Lire le corps de la réponse
+                } else {
+                    // Au lieu de lancer une erreur avec le texte de la réponse, lancer une erreur fixe
+                    throw new Error('Erreur lors de la suppression. Vérifiez que le fichier existe');
+                }
+            })
+            .then(function(data) {
+                showMessage('Fichier supprimé avec succès.', 'success');
+                filenameInput.value = ''; // Réinitialiser le champ de saisie
+            })
+            .catch(function(error) {
+                showMessage(error.message, 'error');
+            });
+        });
+
+        // Fonction pour afficher les messages de succès ou d'erreur
+        function showMessage(message, type) {
+            var messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+            // Masquer le message après 5 secondes
+            setTimeout(function() {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

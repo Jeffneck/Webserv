@@ -4,8 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A PROPOS</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+        }
+
+        /* Barre de Navigation */
+        nav {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 0;
+            text-align: center;
+        }
+        nav a {
+            margin: 0 20px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        nav a:hover {
+            color: #ff9800;
+        }
+        footer { 
+            text-align: center; 
+            margin-top: 40px; 
+            color: #666; 
+        }
+    </style>
 </head>
 <body>
+    <nav>
+        <a href="/static/index.html">Accueil</a>
+        <a href="/static/about.html">À propos</a>
+        <a href="/static/contact.html">Formulaires</a>
+        <a href="/static/upload.html">Téléversement</a>
+        <a href="/cgi-bin/listUploads.py">Fichiers Televerses</a>
+    </nav>
     <h1>A propos</h1>
     <p>Une equipe de jeunes entrepreneurs s'allient pour faire le serveur web le plus performant jamais cree.
          "De vrais genies" - Stephen Hawking (apres sa mort)

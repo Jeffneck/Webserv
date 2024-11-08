@@ -2,30 +2,134 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ACCUEIL</title>
+    <title>ACCUEIL - Webserv</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 50px; }
-        nav a { margin: 0 15px; text-decoration: none; color: #333; }
-        nav a:hover { color: #007BFF; }
-        .upload-form { max-width: 500px; margin: auto; }
-        input[type="file"] { margin: 20px 0; }
-        input[type="submit"] { padding: 10px 20px; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+        }
+
+        /* Barre de Navigation */
+        nav {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 0;
+            text-align: center;
+        }
+        nav a {
+            margin: 0 20px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        nav a:hover {
+            color: #ff9800;
+        }
+
+        /* Conteneur Principal */
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Image Logo */
+        .logo {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        /* Titre et Description */
+        .container h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .container p {
+            color: #555;
+            max-width: 700px;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            line-height: 1.6;
+        }
+
+        /* Pied de Page */
+        footer { 
+            background-color: #333;
+            color: #fff;
+            text-align: center; 
+            padding: 15px 0; 
+        }
+        footer nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+        footer nav a:hover {
+            color: #ff9800;
+        }
+
+        /* Responsivité */
+        @media (max-width: 600px) {
+            nav a {
+                display: block;
+                margin: 10px 0;
+            }
+            .container h1 {
+                font-size: 2em;
+            }
+            .container p {
+                padding: 0 10px;
+                font-size: 1em;
+            }
+            footer nav a {
+                display: block;
+                margin: 5px 0;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Barre de Navigation -->
     <nav>
         <a href="/static/index.html">Accueil</a>
         <a href="/static/about.html">À propos</a>
         <a href="/static/contact.html">Formulaires</a>
         <a href="/static/upload.html">Téléversement</a>
-        <a href="/cgi-bin/listUploads.py">Fichiers Televerses</a>
-        <a href="/images/">Autoindex Images</a>
+        <a href="/cgi-bin/listUploads.py">Fichiers Téléversés</a>
     </nav>
 
-    
-    <h1>PAGE ACCUEIL</h1>
-    <p>Ceci est la page "index.html" de notre site.</p>
-    
+    <!-- Conteneur Principal -->
+    <div class="container">
+        <!-- Image Logo -->
+        <img src="/images/logo.png" alt="Logo Webserv" class="logo">
+
+        <!-- Titre -->
+        <h1>Bienvenue sur Webserv</h1>
+
+        <!-- Description -->
+        <p>
+            Webserv est un projet de serveur web développé en C++ visant à implémenter les fonctionnalités essentielles d'un serveur web moderne. 
+            Ce projet inclut la gestion des requêtes HTTP, le support des scripts CGI, le téléversement et la suppression de fichiers, 
+            ainsi que la gestion des fichiers statiques. Notre objectif est de fournir une solution performante, sécurisée et facile à utiliser 
+            pour héberger vos applications web.
+        </p>
+    </div>
+
+    <!-- Pied de Page -->
     <footer>
         <p>&copy; 2024 Webserv. Ceci est un footer</p>
         <nav>
@@ -36,4 +140,3 @@
     </footer>
 </body>
 </html>
-

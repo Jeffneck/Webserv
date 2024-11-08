@@ -1,23 +1,211 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CONTACT</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+        }
+
+        /* Barre de Navigation */
+        nav {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 0;
+            text-align: center;
+        }
+        nav a {
+            margin: 0 20px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        nav a:hover {
+            color: #ff9800;
+        }
+
+        /* Conteneur Principal */
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Titre et Description */
+        .container h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .container p {
+            color: #555;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        /* Formulaire de Contact */
+        form {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+        form input[type="text"],
+        form input[type="email"],
+        form textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        form input[type="text"]:focus,
+        form input[type="email"]:focus,
+        form textarea:focus {
+            border-color: #ff9800;
+            outline: none;
+        }
+        form button[type="submit"] {
+            background-color: #ff9800;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+        form button[type="submit"]:hover {
+            background-color: #e68900;
+        }
+
+        /* Messages de Feedback (Optionnel) */
+        .message {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Pied de Page */
+        footer {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Responsivité */
+        @media (max-width: 600px) {
+            form {
+                padding: 20px;
+            }
+            nav a {
+                display: block;
+                margin: 10px 0;
+            }
+            .container p {
+                padding: 0 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Contactez-nous</h1>
-    <p>Vous pouvez nous contacter via le formulaire ci-dessous.</p>
-    <form action="/cgi-bin/contactForm.py" method="post">
-        <input type="text" name="name" placeholder="Votre nom" required>
-        <input type="email" name="email" placeholder="Votre email" required>
-        <textarea name="message" placeholder="Votre message" required></textarea>
-        <button type="submit">Envoyer</button>
-    </form>
-    <p>Vous pouvez aussi nous contacter via une requete GET comme ci dessous (jetez un oeil a l'url generee)</p>
-    <a href="/cgi-bin/contactForm.py?name=Dieu&email=dieu_corporation@gmail.com&message=Hello%20MY%20World">Cliquez cliquez</a>
+    <!-- Barre de Navigation -->
+    <nav>
+        <a href="/static/index.html">Accueil</a>
+        <a href="/static/about.html">À propos</a>
+        <a href="/static/contact.html">Formulaires</a>
+        <a href="/static/upload.html">Téléversement</a>
+        <a href="/cgi-bin/listUploads.py">Fichiers Téléversés</a>
+    </nav>
 
+    <!-- Conteneur Principal -->
+    <div class="container">
+        <h1>Contactez-nous</h1>
+        <p>Vous pouvez nous contacter via le formulaire ci-dessous. Nous répondrons à votre message dans les plus brefs délais.</p>
+        <form id="contactForm" action="/cgi-bin/contactForm.py" method="post">
+            <input type="text" name="name" placeholder="Votre nom" required>
+            <input type="email" name="email" placeholder="Votre email" required>
+            <textarea name="message" placeholder="Votre message" rows="6" required></textarea>
+            <button type="submit">Envoyer</button>
+        </form>
+    </div>
 
+    <!-- Messages de Feedback (Optionnel) -->
+    <div id="message" class="message"></div>
+
+    <!-- Pied de Page -->
+    <footer>
+        <p>&copy; 2024 Webserv. Ceci est un footer</p>
+    </footer>
+
+    <!-- Script pour Gérer les Feedbacks (Optionnel) -->
+    <script>
+        document.getElementById('contactForm').addEventListener('submit', function(event) {
+            // Vous pouvez ajouter ici des validations supplémentaires si nécessaire
+
+            // Exemple de feedback sans rechargement de la page (utiliser AJAX si nécessaire)
+            // Pour le moment, cette partie est laissée vide car le formulaire utilise une soumission traditionnelle
+        });
+
+        // Optionnel : Afficher un message après l'envoi réussi ou échoué
+        // Cela nécessite que le serveur redirige vers cette page avec des paramètres indiquant le résultat
+        window.addEventListener('DOMContentLoaded', function() {
+            // Exemple : Utiliser les paramètres d'URL pour afficher un message
+            var params = new URLSearchParams(window.location.search);
+            if (params.has('success')) {
+                showMessage('Votre message a été envoyé avec succès.', 'success');
+            } else if (params.has('error')) {
+                showMessage('Erreur lors de l\'envoi. Veuillez réessayer.', 'error');
+            }
+        });
+
+        function showMessage(message, type) {
+            var messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+            // Masquer le message après 5 secondes
+            setTimeout(function() {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
 </body>
 </html>
-
