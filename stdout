@@ -173,24 +173,6 @@ error_page 504 : /static/error_pages/504GatewayTimeout.html
     error_page 502 : /static/error_pages/502BadGateway.html
     error_page 503 : /static/error_pages/503ServiceUnavailable.html
     error_page 504 : /static/error_pages/504GatewayTimeout.html
-  Location /static/upload.html:
-    root: nginxApp/SimpleWebsite/
-    index: 
-    autoindex: off
-    cgi enabled: off
-    allowed_methods: GET POST
-    upload_enable: on
-    upload_store: cgi-bin/uploads/
-    client_max_body_size: 10
-    error_page 400 : /static/error_pages/400BadRequest.html
-    error_page 403 : /static/error_pages/403Forbidden.html
-    error_page 404 : /static/error_pages/404NotFound.html
-    error_page 405 : /static/error_pages/405MethodNotAllowed.html
-    error_page 500 : /static/error_pages/500InternalServerError.html
-    error_page 501 : /static/error_pages/501InternalServerError.html
-    error_page 502 : /static/error_pages/502BadGateway.html
-    error_page 503 : /static/error_pages/503ServiceUnavailable.html
-    error_page 504 : /static/error_pages/504GatewayTimeout.html
   Server [1] :
   listen: 127.0.0.1:8081
   server_name: redirhost
@@ -285,7 +267,35 @@ error_page 504 : /static/error_pages/504GatewayTimeout.html
 Server started with 3 servers.
 Serveur démarré.
 WebServer::runEventLoop(): Démarrage de la boucle d'événements.
-Request Path: / Matched location: /
-Serving file: nginxApp/SimpleWebsite/static/index.html
-[0;33msend data[0m
+Request Path: /cgi-bin/display.py Matched location: /cgi-bin/
+CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./display.py
+[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
+[0;36mDataSocket::processRequest result.cgipid: 34458[0m
+WebServer::checkCgiTimeouts
+[0;32mCGI POLLIN EVENT[0m
+[0;31mDataSocket::readFromCgiPipe()[0m
+[0;34mCGI added buffer: <html>
+<head><title>Information CGI</title></head>
+<body>
+<h1>Information sur le script CGI</h1>
+<p>Le repertoire de travail actuel est : <strong>/home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite/cgi-bin</strong></p>
+<h2>Arguments passes au script :</h2>
+<p>Aucun argument recu.</p>
+<h2>Variables d'environnement :</h2>
+<ul>
+<li>GATEWAY_INTERFACE = CGI/1.1</li>
+<li>SERVER_PROTOCOL = HTTP/1.1</li>
+<li>REQUEST_METHOD = GET</li>
+<li>SCRIPT_FILENAME = ./display.py</li>
+<li>CONTENT_TYPE = </li>
+<li>CONTENT_LENGTH = </li>
+<li>LC_CTYPE = C.UTF-8</li>
+</ul>
+</body>
+</html>
+[0m
+[0;32mCGI POLLHUP EVENT[0m
+[0;31mDataSocket::readFromCgiPipe()[0m
+[0;31merror page path : nginxApp/SimpleWebsite//static/error_pages/500InternalServerError.html[0m
+error File found
 [0;31mDataSocket::closeSocket: Socket closed.[0m

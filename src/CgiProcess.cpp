@@ -91,9 +91,21 @@ void CgiProcess::terminate() {
     }
 } 
 
+// bool CgiProcess::isRunning() {
+//     int status;
+//     pid_t result = waitpid(pid_, &status, WNOHANG);
+//     if (result == 0) {
+//         // Le processus est toujours en cours d'exécution
+//         return true;
+//     } else {
+//         // Le processus est terminé
+//         pid_ = -1; // Mettre à jour pid_ pour indiquer que le processus n'est plus actif
+//         return false;
+//     }
+// }
+
 bool CgiProcess::isRunning() {
-    int status;
-    pid_t result = waitpid(pid_, &status, WNOHANG);
+    pid_t result = waitpid(pid_, &cgiExitStatus_, WNOHANG);
     if (result == 0) {
         // Le processus est toujours en cours d'exécution
         return true;
@@ -106,6 +118,10 @@ bool CgiProcess::isRunning() {
 
 int CgiProcess::getPipeFd() const {
     return pipefd_[0];
+}
+
+int CgiProcess::getExitStatus() const {
+    return cgiExitStatus_;
 }
 
 std::string CgiProcess::readOutput() {

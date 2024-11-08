@@ -15,6 +15,7 @@ public:
     bool start();
     bool isRunning();
     int getPipeFd() const;
+    int getExitStatus() const;
     std::string readOutput();
 
     bool hasTimedOut() const;
@@ -38,6 +39,9 @@ private:
     // Gerer le temps d' execution max 
     time_t startTime_;
     int maxExecutionTime_;
+
+    //stocker le statut en sortie de waitpid
+    int cgiExitStatus_;
 
     // Méthodes pour créer et nettoyer les arguments et l'environnement
     void createArgv(const std::map<std::string, std::string>& scriptParams);

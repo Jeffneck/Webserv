@@ -1,29 +1,31 @@
-==122948== Memcheck, a memory error detector
-==122948== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
-==122948== Using Valgrind-3.20.0 and LibVEX; rerun with -h for copyright info
-==122948== Command: ./test_webserv
-==122948== 
+==34412== Memcheck, a memory error detector
+==34412== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==34412== Using Valgrind-3.20.0 and LibVEX; rerun with -h for copyright info
+==34412== Command: ./test_webserv
+==34412== 
 RequestHandler::selectServer   : Default server Used => first name of server : localhost ip:port : 16777343:36895
-==122948== 
-==122948== Process terminating with default action of signal 2 (SIGINT)
-==122948==    at 0x4BE1440: poll (poll.c:29)
-==122948==    by 0x11B22B: WebServer::runEventLoop() (WebServer.cpp:94)
-==122948==    by 0x10BA56: main (main.cpp:41)
-==122948== 
-==122948== HEAP SUMMARY:
-==122948==     in use at exit: 87,684 bytes in 112 blocks
-==122948==   total heap usage: 1,055 allocs, 943 frees, 160,398 bytes allocated
-==122948== 
-==122948== LEAK SUMMARY:
-==122948==    definitely lost: 0 bytes in 0 blocks
-==122948==    indirectly lost: 0 bytes in 0 blocks
-==122948==      possibly lost: 0 bytes in 0 blocks
-==122948==    still reachable: 87,684 bytes in 112 blocks
-==122948==                       of which reachable via heuristic:
-==122948==                         stdstring          : 4,188 bytes in 57 blocks
-==122948==         suppressed: 0 bytes in 0 blocks
-==122948== Reachable blocks (those to which a pointer was found) are not shown.
-==122948== To see them, rerun with: --leak-check=full --show-leak-kinds=all
-==122948== 
-==122948== For lists of detected and suppressed errors, rerun with: -s
-==122948== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+[0;36mbefore execve from child[0m
+Error waiting for CGI process: No child processes
+==34412== 
+==34412== Process terminating with default action of signal 2 (SIGINT)
+==34412==    at 0x4BE1440: poll (poll.c:29)
+==34412==    by 0x11B541: WebServer::runEventLoop() (WebServer.cpp:94)
+==34412==    by 0x10BA56: main (main.cpp:41)
+==34412== 
+==34412== HEAP SUMMARY:
+==34412==     in use at exit: 87,984 bytes in 109 blocks
+==34412==   total heap usage: 9,960 allocs, 9,851 frees, 304,257 bytes allocated
+==34412== 
+==34412== LEAK SUMMARY:
+==34412==    definitely lost: 0 bytes in 0 blocks
+==34412==    indirectly lost: 0 bytes in 0 blocks
+==34412==      possibly lost: 0 bytes in 0 blocks
+==34412==    still reachable: 87,984 bytes in 109 blocks
+==34412==                       of which reachable via heuristic:
+==34412==                         stdstring          : 4,480 bytes in 54 blocks
+==34412==         suppressed: 0 bytes in 0 blocks
+==34412== Reachable blocks (those to which a pointer was found) are not shown.
+==34412== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==34412== 
+==34412== For lists of detected and suppressed errors, rerun with: -s
+==34412== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

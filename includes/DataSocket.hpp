@@ -49,6 +49,7 @@ private:
 
     // CGI
     CgiProcess* cgiProcess_;
+    // pid_t cgiPid_;
     int cgiPipeFd_;
     bool cgiComplete_;
     std::string cgiOutputBuffer_;
