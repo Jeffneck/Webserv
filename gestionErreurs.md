@@ -1,5 +1,17 @@
-Checker avec valgrind : 
-valgrind --leak-check=full ./test_webserv > stdout 2>stderr
+# Checker avec valgrind : 
+valgrind --leak-check=full --track-fds=yes ./test_webserv > stdout 2>stderr
+
+checker les fd : 
+recup l' id du programme
+    ps aux | grep test_webserv | grep -v grep
+utiliser ensuite :
+    lsof -p <PID>
+
+# stress tester le serveur
+lancer le script de stress (le modifier si besoin) 
+    ./stress_test.sh
+modifier les Url testees
+    stressUrls.txt
 
 
 CHECKS FONCTIONNELS 
@@ -17,8 +29,12 @@ POST :
 curl -X POST http://127.0.0.1:8080 -d 'key=value'
 PUT :
 curl -X PUT http://127.0.0.1:8080 -d 'key=value'
+
 DELETE :
-curl -X DELETE http://127.0.0.1:8080
+touch nginxApp/SimpleWebsite/cgi-bin/uploads/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-bin/uploads/testfile
+
+DELETE INTERDIT
+touch nginxApp/SimpleWebsite/cgi-bin/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-bin/testfile || rm nginxApp/SimpleWebsite/cgi-bin/testfile
 
 Tester avec des en-têtes personnalisés :
 curl -X GET http://127.0.0.1:8080 -H "Authorization: Bearer token"
@@ -93,6 +109,9 @@ Situations possibles :
 
 Ressource inexistante : Le client demande une page, un fichier ou une ressource qui n'existe pas sur le serveur.
 curl -v http://127.0.0.1:8080/nonexistent-page.html
+
+Le client essaye de delete une ressource inexistante (HUGO)
+curl -X DELETE http://127.0.0.1:8080/cgi-bin/uploads/inexistentfile
 
 Chemin incorrect : L'URL fournie par le client est incorrecte ou contient des erreurs de frappe.
 curl -v http://127.0.0.1:8080/wrongpath/

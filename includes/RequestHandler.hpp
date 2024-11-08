@@ -33,6 +33,7 @@ private:
 
     HttpResponse serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const;
     HttpResponse handleFileUpload(const HttpRequest& request, const Location* location, const Server* server) const;
+    HttpResponse handleDeletion(const HttpRequest& request, const Location* location, const Server* server) const;
     HttpResponse generateAutoIndex(const std::string& fullPath, const std::string& requestPath) const;
     std::string getMimeType(const std::string& extension) const;
     bool isPathSecure(const std::string& root, const std::string& fullPath) const;

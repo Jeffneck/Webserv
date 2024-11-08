@@ -32,7 +32,8 @@ ListeningSocket::ListeningSocket(uint32_t host, uint16_t port) {
         std::cerr << "Erreur lors du bind" << std::endl;
     }
 
-    if (listen(server_fd, 10) < 0) //SOMAXCONN peut etre utilise a la place de 10 
+    // if (listen(server_fd, 10) < 0) //SOMAXCONN peut etre utilise a la place de 10 
+    if (listen(server_fd, SOMAXCONN) < 0) //SOMAXCONN peut etre utilise a la place de 10 
     {
         // Gérer l'erreur
         std::cerr << "Erreur lors du listen" << std::endl;

@@ -103,9 +103,10 @@ void RequestHandler::process(const Server* server, const Location* location, con
     // Collecte des méthodes autorisées
     std::vector<std::string> allowedMethods;
     if (location && !location->getAllowedMethods().empty()) {
+        std::cout << "Using allowed methods found in location" << std::endl;
         allowedMethods = location->getAllowedMethods();
     } else {
-        // Méthodes autorisées par défaut si non spécifiées
+        std::cout << "Using default allowed methods GET POST DELETE" << std::endl;
         allowedMethods.push_back("GET");
         allowedMethods.push_back("POST");
         allowedMethods.push_back("DELETE");
@@ -157,6 +158,13 @@ void RequestHandler::process(const Server* server, const Location* location, con
     // Gestion de l'upload de fichiers
     if (request.getMethod() == "POST" && location && location->getUploadEnable()) {
         result.response = handleFileUpload(request, location, server);
+        result.responseReady = true;
+        return;
+    }
+
+    // Gestion des delete de fichiers
+    if (request.getMethod() == "DELETE" && location) {
+        result.response = handleDeletion(request, location, server);
         result.responseReady = true;
         return;
     }
@@ -494,6 +502,95 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     return response;
 }
 
+HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Location* location, const Server* server) const {
+    std::cout << RED << "RequestHandler::handleDeletion" << RESET << std::endl; // Debug
+
+    HttpResponse response;
+
+    // Déterminer le répertoire racine
+    std::string root = server->getRoot();
+    if (location) {
+        root = location->getRoot();
+    }
+
+    // Construire le chemin complet du fichier à supprimer
+    std::string requestPath = request.getPath();
+
+    // Gérer le cas où le chemin se termine par un '/'
+    if (!requestPath.empty() && requestPath[requestPath.size() - 1] == '/') {
+        // Les requêtes DELETE ne devraient pas se terminer par un '/', renvoyer une erreur
+        std::string errorPagePath = getErrorPageFullPath(400, location, server);
+        response = handleError(400, errorPagePath);
+        return response;
+    }
+
+    // Retirer le chemin de la location du requestPath si root est défini dans la location
+    if (location && location->getRootIsSet()) {
+        std::string to_remove = location->getPath();
+        if (requestPath.find(to_remove) == 0) {
+            requestPath.erase(0, to_remove.length());
+        }
+    }
+
+    // Construire le chemin absolu vers le fichier
+    std::string fullPath = root + requestPath;
+    std::cout << "Attempting to delete file: " << fullPath << std::endl; // Debug
+
+    // Sécuriser le chemin
+    if (!isPathSecure(root, fullPath)) {
+        std::string errorPagePath = getErrorPageFullPath(403, location, server);
+        response = handleError(403, errorPagePath); // Forbidden
+        return response;
+    }
+
+    // Vérifier si le fichier existe
+    struct stat fileStat;
+    if (stat(fullPath.c_str(), &fileStat) != 0) {
+        if (errno == ENOENT) {
+            std::string errorPagePath = getErrorPageFullPath(404, location, server);
+            response = handleError(404, errorPagePath); // Not Found
+            return response;
+        } else {
+            std::cerr << "RequestHandler::handleDeletion : Error accessing file: " << strerror(errno) << std::endl;
+            std::string errorPagePath = getErrorPageFullPath(500, location, server);
+            response = handleError(500, errorPagePath); // Internal Server Error
+            return response;
+        }
+    }
+
+    // Vérifier que c'est un fichier régulier
+    if (!S_ISREG(fileStat.st_mode)) {
+        std::cerr << "RequestHandler::handleDeletion : Target is not a regular file." << std::endl;
+        std::string errorPagePath = getErrorPageFullPath(403, location, server);
+        response = handleError(403, errorPagePath); // Forbidden
+        return response;
+    }
+
+    // Vérifier les permissions de suppression
+    if (access(fullPath.c_str(), W_OK) != 0) {
+        std::cerr << "RequestHandler::handleDeletion : No permission to delete the file: " << strerror(errno) << std::endl;
+        std::string errorPagePath = getErrorPageFullPath(403, location, server);
+        response = handleError(403, errorPagePath); // Forbidden
+        return response;
+    }
+
+    // Tenter de supprimer le fichier
+    if (unlink(fullPath.c_str()) != 0) {
+        std::cerr << "RequestHandler::handleDeletion : Failed to delete file: " << strerror(errno) << std::endl;
+        std::string errorPagePath = getErrorPageFullPath(500, location, server);
+        response = handleError(500, errorPagePath); // Internal Server Error
+        return response;
+    }
+
+    // Construire la réponse de succès
+    response.setStatusCode(200);
+    response.setBody("File deleted successfully.");
+    response.setHeader("Content-Type", "text/plain; charset=UTF-8");
+    response.setHeader("Connection", "close");
+
+    return response;
+}
+
 
 HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, const std::string& requestPath) const {
     std::cout << RED << "RequestHandler::generateAutoIndex" << RESET << std::endl; // test
@@ -556,15 +653,11 @@ bool RequestHandler::isPathSecure(const std::string& root, const std::string& fu
         std::cerr << "Invalid root path: " << root << std::endl;
         return false;
     }
-
-    if (realpath(fullPath.c_str(), realFullPath) == NULL) {
-        std::cerr << "Invalid file path: " << fullPath << std::endl;
-        return false;
-    }
+    realpath(fullPath.c_str(), realFullPath);
 
     std::string realRootStr(realRoot);
     std::string realFullPathStr(realFullPath);
-
+    // std::cout << YELLOW << "root: "<< realRootStr << " fullpath : "<< realFullPathStr << std::endl;//debug
     // Vérifier que fullPath commence par root
     if (realFullPathStr.find(realRootStr) != 0) {
         std::cerr << "Path traversal attempt detected: " << fullPath << std::endl;

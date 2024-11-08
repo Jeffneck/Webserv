@@ -267,9 +267,46 @@ error_page 504 : /static/error_pages/504GatewayTimeout.html
 Server started with 3 servers.
 Serveur démarré.
 WebServer::runEventLoop(): Démarrage de la boucle d'événements.
+Request Path: /cgi-bin/infinite.py Matched location: /cgi-bin/
+CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./infinite.py
+[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+[0;31merror page path : nginxApp/SimpleWebsite//static/error_pages/500InternalServerError.html[0m
+error File found
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: /cgi-bin/infinite.py Matched location: /cgi-bin/
+CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./infinite.py
+[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+WebServer::checkCgiTimeouts
+[0;31merror page path : nginxApp/SimpleWebsite//static/error_pages/500InternalServerError.html[0m
+error File found
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: / Matched location: /
+Serving file: nginxApp/SimpleWebsite/static/index.html
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+Request Path: /cgi-bin/infinite.py Matched location: /cgi-bin/
+CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./infinite.py
+[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+Request Path: /static/contact.html Matched location: /static/
+Serving file: nginxApp/SimpleWebsite//static/contact.html
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+[0;31mDataSocket::closeSocket: Socket closed.[0m
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
 Request Path: /cgi-bin/contactForm.py Matched location: /cgi-bin/
 CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./contactForm.py
-[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
+[0;36mDataSocket::processRequest result.cgiprocess : 9[0m
+WebServer::checkCgiTimeouts
 WebServer::checkCgiTimeouts
 [0;32mCGI POLLIN EVENT[0m
 [0;31mDataSocket::readFromCgiPipe()[0m
@@ -281,51 +318,21 @@ WebServer::checkCgiTimeouts
     <title>Merci de nous avoir contactés</title>
 </head>
 <body>
-    <h1>Merci, w</h1>
+    <h1>Merci, WE</h1>
     <p>Votre message a été reçu avec succès. Nous vous contacterons bientôt à l'adresse ert@g.com.</p>
-    <p>Voici le recapitulatif de votre message :'ew'.</p>
+    <p>Voici le recapitulatif de votre message :'E'.</p>
 </body>
 </html>
 
 [0m
 WebServer::checkCgiTimeouts
-[0;32mCGI POLLHUP EVENT[0m
-[0;31mDataSocket::readFromCgiPipe()[0m
-WebServer::checkCgiTimeouts
-[0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: /cgi-bin/error.py Matched location: /cgi-bin/
-CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./error.py
-[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
 WebServer::checkCgiTimeouts
 [0;32mCGI POLLHUP EVENT[0m
 [0;31mDataSocket::readFromCgiPipe()[0m
-cgi status : 256
-[0;31merror page path : nginxApp/SimpleWebsite//static/error_pages/502BadGateway.html[0m
-error File found
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
+WebServer::checkCgiTimeouts
 [0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: /cgi-bin/sleep.py Matched location: /cgi-bin/
-CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./sleep.py
-[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
-WebServer::checkCgiTimeouts
-WebServer::checkCgiTimeouts
-WebServer::checkCgiTimeouts
-[0;32mCGI POLLIN EVENT[0m
-[0;31mDataSocket::readFromCgiPipe()[0m
-[0;34mCGI added buffer: <html>
-<body>
-<h1>Le script a terminé la pause de 10 secondes.</h1>
-</body>
-</html>
-[0m
-WebServer::checkCgiTimeouts
-[0;32mCGI POLLHUP EVENT[0m
-[0;31mDataSocket::readFromCgiPipe()[0m
-[0;31mDataSocket::closeSocket: Socket closed.[0m
-Request Path: /cgi-bin/infinite.py Matched location: /cgi-bin/
-CgiProcess::start : path absolu repertoire : /home/kali/Desktop/42/Webserv/nginxApp/SimpleWebsite///cgi-bin// path relatif fichier : ./infinite.py
-[0;36mDataSocket::processRequest result.cgiprocess : 7[0m
-WebServer::checkCgiTimeouts
-WebServer::checkCgiTimeouts
 WebServer::checkCgiTimeouts
 [0;31merror page path : nginxApp/SimpleWebsite//static/error_pages/500InternalServerError.html[0m
 error File found
