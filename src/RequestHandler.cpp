@@ -40,7 +40,7 @@ RequestResult RequestHandler::handleRequest(const HttpRequest& request) {
 }
 
 const Server* RequestHandler::selectServer(const HttpRequest& request) const {
-    std::string hostHeader = request.getHeader("Host");
+    std::string hostHeader = request.getHeader("host");
     if (hostHeader.empty()) {
         std::cerr << "No Host header found in the request." << std::endl;
         return NULL; // Retourner NULL pour indiquer une erreur
@@ -112,15 +112,39 @@ void RequestHandler::process(const Server* server, const Location* location, con
         allowedMethods.push_back("DELETE");
     }
 
-    // Vérifier si la méthode HTTP est autorisée
-    if (std::find(allowedMethods.begin(), allowedMethods.end(), request.getMethod()) == allowedMethods.end()) {
-        // Méthode non autorisée
-        std::string errorPagePath = getErrorPageFullPath(405, location, server);
-        result.response = handleError(405, errorPagePath);
-        // Ajouter l'en-tête Allow
-        result.response.setHeader("Allow", join(allowedMethods, ", "));
-        result.responseReady = true;
-        return;
+    // Vérification que Content-Length n'est pas supérieure à client_max_body_size et retour d'erreur HTTP approprié
+    std::string contentLengthStr = request.getHeader("content-length");
+    if (!contentLengthStr.empty()) {
+        // Convertir Content-Length en size_t
+        char* endptr;
+        errno = 0;
+        unsigned long contentLength = strtoul(contentLengthStr.c_str(), &endptr, 10);
+        if (*endptr != '\0' || errno != 0) {
+            // En-tête Content-Length invalide
+            std::string errorPagePath = getErrorPageFullPath(400, location, server);
+            result.response = handleError(400, errorPagePath);
+            result.responseReady = true;
+            return;
+        }
+
+        // Obtenir client_max_body_size depuis location ou server
+        size_t clientMaxBodySize = 0;
+        if (location && location->getClientMaxBodySize() > 0) {
+            clientMaxBodySize = location->getClientMaxBodySize();
+        } else if (server->getClientMaxBodySize() > 0) {
+            clientMaxBodySize = server->getClientMaxBodySize();
+        } else {
+            // Valeur par défaut si non spécifiée
+            clientMaxBodySize = 0; // 0 signifie pas de limite
+        }
+
+        if (clientMaxBodySize > 0 && contentLength > clientMaxBodySize) {
+            std::cout << YELLOW << "client max body size "<<clientMaxBodySize << " vs content length " << contentLength << RESET << std::endl;//test
+            std::string errorPagePath = getErrorPageFullPath(413, location, server);
+            result.response = handleError(413, errorPagePath);
+            result.responseReady = true;
+            return;
+        }
     }
 
     // Redirection
@@ -202,7 +226,7 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
         // Extraire les paramètres de la query string
         params = createScriptParamsGET(request.getQueryString());
     } else if (request.getMethod() == "POST") {
-        std::string contentType = request.getHeader("Content-Type");
+        std::string contentType = request.getHeader("content-type");
         if (contentType == "application/x-www-form-urlencoded") {
             // Extraire les paramètres du corps de la requête
             params = createScriptParamsPOST(request.getBody());
@@ -234,8 +258,8 @@ void RequestHandler::setupScriptEnvp(const HttpRequest& request, const std::stri
     envVars.push_back("SERVER_PROTOCOL=HTTP/1.1");
     envVars.push_back("REQUEST_METHOD=" + request.getMethod());
     envVars.push_back("SCRIPT_FILENAME=" + relativeFilePath);
-    envVars.push_back("CONTENT_TYPE=" + request.getHeader("Content-Type"));
-    envVars.push_back("CONTENT_LENGTH=" + request.getHeader("Content-Length"));
+    envVars.push_back("CONTENT_TYPE=" + request.getHeader("content-Type"));
+    envVars.push_back("CONTENT_LENGTH=" + request.getHeader("content-Length"));
     // envVars.push_back("QUERY_STRING=" + request.getQueryString());//inutile puisque deja envoyees dans les arguments
     
 }
@@ -380,6 +404,14 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         return handleError(403, errorPagePath); // Forbidden
     }
 
+     // Vérifier la taille du fichier (10Mo max)
+    const size_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+    if (static_cast<size_t>(fileStat.st_size) > MAX_FILE_SIZE) {
+        std::cerr << "File size exceeds maximum allowed size of 10 MB: " << fileStat.st_size << " bytes" << std::endl;
+        std::string errorPagePath = getErrorPageFullPath(501, location, server);
+        return handleError(501, errorPagePath); // Not Implemented
+    }
+
     // Ouvrir le fichier demandé
     std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open()) {
@@ -422,7 +454,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     HttpResponse response;
 
     // Vérifier que le Content-Type est multipart/form-data
-    std::string contentType = request.getHeader("Content-Type");
+    std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != 0 ) {
         std::string errorPagePath = getErrorPageFullPath(400, location, server);
         response = handleError(400, errorPagePath);
@@ -583,7 +615,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     }
 
     // Construire la réponse de succès
-    response.setStatusCode(200);
+    response.setStatusCode(204);
     response.setBody("File deleted successfully.");
     response.setHeader("Content-Type", "text/plain; charset=UTF-8");
     response.setHeader("Connection", "close");

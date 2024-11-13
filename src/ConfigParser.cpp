@@ -8,6 +8,8 @@
 #include <cctype>
 #include <cstdlib>
 #include <arpa/inet.h> // Pour inet_pton
+#include <limits>
+
 
 // Constructeur
 ConfigParser::ConfigParser(const std::string &filePath)
@@ -166,13 +168,81 @@ void ConfigParser::parseClientMaxBodySize(size_t &size)
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
         throw ParsingException("Valeur attendue après 'client_max_body_size'");
-    size = std::atoi(tokens_[currentTokenIndex_].c_str());
+
+    // Récupérer le token représentant la taille
+    std::string sizeToken = tokens_[currentTokenIndex_];
+
+    // Vérifier que le token n'est pas vide
+    if (sizeToken.empty())
+        throw ParsingException("Valeur vide pour 'client_max_body_size'");
+
+    // Variables pour stocker la partie numérique et l'unité
+    std::string numericPart;
+    std::string unitPart;
+
+    // Parcourir le token pour séparer la partie numérique de l'unité
+    size_t pos = 0;
+    while (pos < sizeToken.length() && isdigit(sizeToken[pos]))
+    {
+        numericPart += sizeToken[pos];
+        ++pos;
+    }
+
+    // Vérifier qu'il y a bien une partie numérique
+    if (numericPart.empty())
+        throw ParsingException("Valeur numérique attendue pour 'client_max_body_size'");
+
+    // Récupérer la partie unité
+    unitPart = sizeToken.substr(pos);
+
+    // Convertir la partie numérique en nombre
+    char *endptr;
+    errno = 0; // Réinitialiser errno avant l'appel
+    unsigned long numericValue = strtoul(numericPart.c_str(), &endptr, 10);
+    if (*endptr != '\0' || errno == ERANGE)
+        throw ParsingException("Valeur numérique invalide pour 'client_max_body_size'");
+
+    // Vérifier que numericValue peut être converti en size_t sans débordement
+    if (numericValue > static_cast<unsigned long>(std::numeric_limits<size_t>::max()))
+        throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+
+    size_t sizeInBytes = static_cast<size_t>(numericValue);
+
+    // Gérer l'unité si présente
+    if (!unitPart.empty())
+    {
+        if (unitPart == "k" || unitPart == "K")
+        {
+            if (sizeInBytes > std::numeric_limits<size_t>::max() / 1024)
+                throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+            sizeInBytes *= 1024;
+        }
+        else if (unitPart == "m" || unitPart == "M")
+        {
+            if (sizeInBytes > std::numeric_limits<size_t>::max() / (1024 * 1024))
+                throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+            sizeInBytes *= 1024 * 1024;
+        }
+        else if (unitPart == "g" || unitPart == "G")
+        {
+            if (sizeInBytes > std::numeric_limits<size_t>::max() / (static_cast<size_t>(1024) * 1024 * 1024))
+                throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+            sizeInBytes *= static_cast<size_t>(1024) * 1024 * 1024;
+        }
+        else
+        {
+            throw ParsingException("Unité invalide pour 'client_max_body_size' (attendu 'k', 'm' ou 'g')");
+        }
+    }
+
+    // Affecter la taille
+    size = sizeInBytes;
+
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
         throw ParsingException("';' attendu après la valeur de 'client_max_body_size'");
     ++currentTokenIndex_;
 }
-
 // Méthode pour parser 'error_page' pour Config
 void ConfigParser::parseErrorPage(Config &config)
 {

@@ -42,21 +42,22 @@ HttpResponse handleError(int statusCode, const std::string &errorPagePath)
     } else {
         // Message d'erreur par défaut
         std::cout << "Message d'erreur par défaut." << std::endl; // Debug
-        switch (statusCode) {
-            case 400: response.setBody("Bad Request"); break;
-            case 401: response.setBody("Unauthorized"); break;
-            case 403: response.setBody("Forbidden"); break;
-            case 404: response.setBody("Not Found"); break;
-            case 405: response.setBody("Method Not Allowed"); break;
-            case 408: response.setBody("Request Timeout"); break;
-            case 500: response.setBody("Internal Server Error"); break;
-            case 501: response.setBody("Not Implemented"); break;
-            case 502: response.setBody("Bad Gateway"); break;
-            case 503: response.setBody("Service Unavailable"); break;
-            case 504: response.setBody("Gateway Timeout"); break;
-            case 505: response.setBody("HTTP Version Not Supported"); break;
-            default: response.setBody("Error " + toString(statusCode));
-        }
+        response.setBody(response.getDefaultReasonPhrase(statusCode));
+        // switch (statusCode) {
+        //     case 400: response.setBody("Bad Request"); break;
+        //     case 401: response.setBody("Unauthorized"); break;
+        //     case 403: response.setBody("Forbidden"); break;
+        //     case 404: response.setBody("Not Found"); break;
+        //     case 405: response.setBody("Method Not Allowed"); break;
+        //     case 408: response.setBody("Request Timeout"); break;
+        //     case 500: response.setBody("Internal Server Error"); break;
+        //     case 501: response.setBody("Not Implemented"); break;
+        //     case 502: response.setBody("Bad Gateway"); break;
+        //     case 503: response.setBody("Service Unavailable"); break;
+        //     case 504: response.setBody("Gateway Timeout"); break;
+        //     case 505: response.setBody("HTTP Version Not Supported"); break;
+        //     default: response.setBody("Error " + toString(statusCode));
+        // }
     }
 
     // Définir les en-têtes HTTP appropriés

@@ -16,6 +16,7 @@ public:
 
     // Methods to set response properties
     void setStatusCode(int code);
+    std::string getDefaultReasonPhrase(int code) const;
     void setReasonPhrase(const std::string& phrase);
     void setBody(const std::string& bodyContent);
     void setHeader(const std::string& headerName, const std::string& headerValue);
@@ -24,7 +25,6 @@ public:
     std::string generateResponse() const;
 
 private:
-    std::string getDefaultReasonPhrase(int code) const;
 };
 
 #endif // HTTPRESPONSE_HPP
