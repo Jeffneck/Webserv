@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include <signal.h>
 
+// Externe, défini dans main.cpp
+extern volatile bool g_running;
+
 WebServer::WebServer() : config_(NULL) {}
 
 WebServer::~WebServer() {
@@ -38,8 +41,8 @@ void WebServer::start() {
 void WebServer::runEventLoop() {
     std::cout << "WebServer::runEventLoop(): Démarrage de la boucle d'événements." << std::endl;
     // Ignorer SIGPIPE pour éviter que le programme ne se termine lors d'un Broken Pipe
-    // signal(SIGPIPE, SIG_IGN);
-    while (true) {
+    signal(SIGPIPE, SIG_IGN);
+    while (g_running) {
         std::vector<struct pollfd> pollfds;
         std::vector<ListeningSocket*> pollListeningSockets;
         std::vector<DataSocket*> pollDataSockets;
@@ -112,7 +115,7 @@ void WebServer::runEventLoop() {
                     ListeningSocket* listeningSocket = pollListeningSockets[i];
                     int new_fd = listeningSocket->acceptConnection();
                     if (new_fd >= 0) {
-                        DataSocket* newDataSocket = new DataSocket(new_fd, listeningSocket->getAssociatedServers(), *config_);
+                        DataSocket* newDataSocket = new DataSocket(new_fd, listeningSocket->getAssociatedServers(), config_);
                         dataHandler_.addClientSocket(newDataSocket);
                     }
                 }
@@ -120,7 +123,9 @@ void WebServer::runEventLoop() {
                 // Socket client
                 DataSocket* dataSocket = pollDataSockets[i];
                 if (pollfds[i].revents & POLLIN) {
+                    std::cout << "POLLIN" << std::endl;
                     if (!dataSocket->receiveData()) {
+                        std::cout << "POLLIN Datasocket close" << std::endl;
                         dataSocket->closeSocket();
                     } else if (dataSocket->isRequestComplete()) {
                         dataSocket->processRequest();
@@ -130,11 +135,14 @@ void WebServer::runEventLoop() {
                     }
                 }
                 if (pollfds[i].revents & POLLOUT) {
+                    std::cout << "POLLOUT Datasocket close" << std::endl;
                     if (!dataSocket->sendData()) {
+                        std::cout << "POLLOUT Datasocket close" << std::endl;
                         dataSocket->closeSocket();
                     }
                 }
                 if (pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                    std::cout << "POLLHUP.. Datasocket close" << std::endl;
                     dataSocket->closeSocket();
                 }
             } else if (pollFdTypes[i] == 2) {
@@ -156,8 +164,12 @@ void WebServer::runEventLoop() {
         }
 
         // Nettoyage des sockets fermées attention ne pas reactiver a moins d' avoir modifie la logique de fermeture car  les sockets sont deja fermes avant donc cela genere des problemes
-        // dataHandler_.removeClosedSockets();
+        dataHandler_.removeClosedSockets();
     }
+    std::cout << "Boucle d'événements terminée. Fermeture du serveur." << std::endl;
+
+    // Appeler la fonction de nettoyage
+    cleanUp();
 }
 
 void WebServer::checkCgiTimeouts() {

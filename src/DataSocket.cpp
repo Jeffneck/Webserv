@@ -9,14 +9,15 @@
 #include <errno.h>//debug
 #include <cstring>//debug
 
-DataSocket::DataSocket(int fd, const std::vector<Server*>& servers, const Config& config)
+DataSocket::DataSocket(int fd, const std::vector<Server*>& servers, const Config* config)
     : client_fd_(fd), associatedServers_(servers), requestComplete_(false), config_(config),
       sendBufferOffset_(0), cgiProcess_(NULL), cgiPipeFd_(-1), cgiComplete_(true),
       shouldCloseAfterSend_(false) { }
 
 
 DataSocket::~DataSocket() {
-    closeSocket();
+    std::cout << "DESTRUCTOR Datasocket" << std::endl;
+    // closeSocket();
     if (cgiProcess_) {
         delete cgiProcess_;
         cgiProcess_ = NULL;
@@ -47,6 +48,7 @@ bool DataSocket::receiveData() {
         }
         return true;
     } else if (bytesRead == 0) {
+        std::cout << "Bytesread = 0" << std::endl;
         return false;
     } else {
         return false;
@@ -60,7 +62,7 @@ void DataSocket::handleParseError(int errorCode) {
     if (server) {
         result.response = handleError(errorCode, server->getErrorPageFullPath(errorCode));
     } else {
-        result.response = handleError(errorCode, config_.getErrorPageFullPath(errorCode));
+        result.response = handleError(errorCode, config_->getErrorPageFullPath(errorCode));
     }
     sendBuffer_ = result.response.generateResponse();
     sendBufferOffset_ = 0;
@@ -83,7 +85,7 @@ bool DataSocket::isRequestComplete() const {
 }
 
 void DataSocket::processRequest() {
-    RequestHandler handler(config_, associatedServers_);
+    RequestHandler handler(*config_, associatedServers_);
     RequestResult result = handler.handleRequest(httpRequest_);
 
     if (result.responseReady) {
@@ -106,6 +108,8 @@ void DataSocket::processRequest() {
 }
 
 bool DataSocket::sendData() {
+    std::cout << CYAN <<"DataSocket::sendData " RESET <<std::endl;//test
+    
     if (sendBuffer_.empty()) {
         return true;
     }
@@ -160,42 +164,6 @@ int DataSocket::getCgiPipeFd() const {
 bool DataSocket::isCgiComplete() const {
     return cgiComplete_;
 }
-
-// void DataSocket::readFromCgiPipe() {
-//     std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl; // Debug
-    
-//     char buffer[4096];
-//     ssize_t bytesRead = read(cgiPipeFd_, buffer, sizeof(buffer));
-
-//     if (bytesRead > 0) {
-//         cgiOutputBuffer_.append(buffer, bytesRead);
-//         std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
-//     } else if (bytesRead == 0) {
-//         // EOF atteint, le processus CGI a terminé
-//         closeCgiPipe();
-
-//         HttpResponse response;
-//         response.setStatusCode(200);
-//         response.setBody(cgiOutputBuffer_);
-//         response.setHeader("Content-Type", "text/html; charset=UTF-8");
-//         sendBuffer_ = response.generateResponse();
-//         sendBufferOffset_ = 0;
-//         cgiOutputBuffer_.clear();
-//     } else {
-//         // bytesRead < 0, une erreur s'est produite
-//         if (!cgiProcess_->isRunning()) {
-//                 // Le processus CGI s'est terminé sans envoyer EOF
-//                 std::cerr << "CGI process terminated without sending EOF." << std::endl;
-//                 closeCgiPipe();
-
-//                 HttpResponse response;
-//                 response = handleError(500, getAssociatedServer()->getErrorPageFullPath(500));
-//                 sendBuffer_ = response.generateResponse();
-//                 sendBufferOffset_ = 0;
-//                 cgiOutputBuffer_.clear();
-//             }
-//     }
-// }
 
 void DataSocket::readFromCgiPipe() {
     std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl; // Debug

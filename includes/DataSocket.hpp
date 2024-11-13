@@ -13,7 +13,7 @@
 
 class DataSocket {
 public:
-    DataSocket(int fd, const std::vector<Server*>& servers, const Config& config);
+    DataSocket(int fd, const std::vector<Server*>& servers, const Config* config);
     ~DataSocket();
 
     bool receiveData();
@@ -43,7 +43,7 @@ private:
     std::vector<Server*> associatedServers_;
     HttpRequest httpRequest_;
     bool requestComplete_;
-    Config config_;
+    const Config *config_;
     std::string sendBuffer_;
     size_t sendBufferOffset_;
 
