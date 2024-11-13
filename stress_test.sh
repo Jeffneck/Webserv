@@ -18,10 +18,10 @@ echo "Serveur lancé avec PID : $PID"
 sleep 2
 
 # Lancer Siege avec 5 users pendant 1min
-siege -c 5 -t 1M -f $URLS
+siege -b -c 5 -t 1M -f $URLS
 
 # Lancer Siege avec 100 users pendant 1min
-# siege -c 100 -t 1M -f $URLS
+# siege -b -c 50 -t 1M -f $URLS
 
 
 

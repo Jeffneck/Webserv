@@ -1,4 +1,4 @@
-NAME		= test_webserv
+NAME		= webserv
 
 CC			= c++
 
