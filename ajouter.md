@@ -1,6 +1,9 @@
+Pourquoi certaines commandes comme 
+ajouter le contenu de listen aux servernames 127.0.0.1:8080 
+
 televerser des files est bloquant
 
-comprendre pourquoi l' utilisation de la memoire augmente constamment (ps.log pdt le stress_test)
+PATCHED comprendre pourquoi l' utilisation de la memoire augmente constamment (ps.log pdt le stress_test)
 
 verifier que les codes qui ne sont pas des codes d' erreurs sont respectes
 

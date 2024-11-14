@@ -63,7 +63,7 @@ bool HttpRequest::parseRequest() {
 }
 
 bool HttpRequest::handleRequestLine(const std::string& line) {
-    if (line.empty()) {
+    if (line == "\r" || line.empty()) {
         // Requête incomplète
         return false;
     }
@@ -121,43 +121,47 @@ bool HttpRequest::validateHeaders() {
         parseErrorCode_ = 400; // Bad Request
         return false;
     }
-    if (!parseContentLength()) {
-        return false;
-    }
-    if (method_ == "POST" && !validateContentType()&& !ContentLengthIsPresent()) {
+    if (method_ == "POST" && (!validatePOSTContentType() || !validatePOSTContentLength() )) {
         return false;
     }
     return true;
 }
 
-bool HttpRequest::parseContentLength() {
+bool HttpRequest::validatePOSTContentLength() {
+    // Recherche de l'en-tête Content-Length
     std::map<std::string, std::string>::iterator it = headers_.find("content-length");
-    if (it != headers_.end()) {
-        std::istringstream lengthStream(it->second);
-        int length;
-        if (!(lengthStream >> length) || length < 0) {
-            std::cerr << "Invalid Content-Length: " << it->second << std::endl;
-            parseError_ = true;
-            parseErrorCode_ = 400; // Bad Request
-            return false;
-        }
-
-        // Vérifier si Content-Length dépasse 10 Mo on considere que c' est trop grand 
-        if (static_cast<size_t>(length) > 10*1024*1024) {
-            std::cerr << "Content-Length exceeds 10 Mo (max size supported by the server) length: " << length << std::endl;
-            parseError_ = true;
-            parseErrorCode_ = 501; // Not Implemented
-            return false;
-        }
-
-        contentLength_ = static_cast<size_t>(length);
-    } else {
+    if (it == headers_.end()) {
         contentLength_ = 0;
+        std::cerr << "Missing Content-Length header in POST request." << std::endl;
+        parseError_ = true;
+        parseErrorCode_ = 411; // Length Required
+        return false;
     }
+
+    // Conversion de la valeur de Content-Length
+    std::istringstream lengthStream(it->second);
+    int length;
+    if (!(lengthStream >> length) || length < 0) {
+        std::cerr << "Invalid Content-Length: " << it->second << std::endl;
+        parseError_ = true;
+        parseErrorCode_ = 400; // Bad Request
+        return false;
+    }
+
+    // Vérification si Content-Length dépasse 10 Mo (10 * 1024 * 1024 octets)
+    if (static_cast<size_t>(length) > 10 * 1024 * 1024) {
+        std::cerr << "Content-Length exceeds 10 Mo (max size supported by the server), length: " << length << std::endl;
+        parseError_ = true;
+        parseErrorCode_ = 413; // Payload Too Large
+        return false;
+    }
+
+    contentLength_ = static_cast<size_t>(length);
     return true;
 }
 
-bool HttpRequest::validateContentType() {
+
+bool HttpRequest::validatePOSTContentType() {
     // Récupérer l'en-tête Content-Type
     std::map<std::string, std::string>::iterator it = headers_.find("content-type");
     if (it == headers_.end() || it->second.empty()) {
@@ -189,18 +193,16 @@ bool HttpRequest::validateContentType() {
     }
 }
 
-bool HttpRequest::ContentLengthIsPresent() {
+// bool HttpRequest::ValidatePOSTContentLength() {
 
-    // Rechercher l'en-tête Content-Length
-    std::map<std::string, std::string>::const_iterator it = headers_.find("Content-Length");
-    if (it == headers_.end()) {
-        std::cerr << "Missing Content-Length header in POST request." << std::endl;
-        parseError_ = true;
-        parseErrorCode_ = 411; // Length Required
-        return false;
-    }
-    return true;
-}
+//     if (contentLength_) {
+//         std::cerr << "Missing Content-Length header in POST request." << std::endl;
+//         parseError_ = true;
+//         parseErrorCode_ = 411; // Length Required
+//         return false;
+//     }
+//     return true;
+// }
 
 bool HttpRequest::parseRequestLine(const std::string& line) {
     std::istringstream lineStream(line);

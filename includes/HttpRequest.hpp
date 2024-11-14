@@ -53,9 +53,9 @@ private:
     bool handleHeaders(const std::string& line);
     bool handleBody();
     bool validateHeaders();
-    bool parseContentLength();
-    bool validateContentType();
-    bool ContentLengthIsPresent();
+    // bool parseContentLength();
+    bool validatePOSTContentType();
+    bool validatePOSTContentLength(); 
 
 
     bool parseRequestLine(const std::string& line);
