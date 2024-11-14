@@ -25,8 +25,14 @@ curl http://127.0.0.1:8080 -H "Host:anotherhost"
 Tester avec différentes méthodes HTTP :
 GET :
 curl -X GET http://127.0.0.1:8080
+
+GET INTERDIT : 
+curl -X GET http://127.0.0.1:8080/secretFolder/secretFile.txt
+
 POST :
-curl -X POST http://127.0.0.1:8080 -d 'key=value'
+
+curl -X POST 127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Type: application/x-www-form-urlencoded" -d "name=testname&email=testemail&message=testmessage"
+
 PUT :
 curl -X PUT http://127.0.0.1:8080 -d 'key=value'
 

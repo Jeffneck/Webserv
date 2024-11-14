@@ -105,6 +105,11 @@ void RequestHandler::process(const Server* server, const Location* location, con
     if (location && !location->getAllowedMethods().empty()) {
         std::cout << "Using allowed methods found in location" << std::endl;
         allowedMethods = location->getAllowedMethods();
+        if(allowedMethods[0] == "DENY"){
+            result.response = handleError(405, getErrorPageFullPath(405, location, server));
+            result.responseReady = true;
+            return;
+        }
     } else {
         std::cout << "Using default allowed methods GET POST DELETE" << std::endl;
         allowedMethods.push_back("GET");
@@ -121,8 +126,7 @@ void RequestHandler::process(const Server* server, const Location* location, con
         unsigned long contentLength = strtoul(contentLengthStr.c_str(), &endptr, 10);
         if (*endptr != '\0' || errno != 0) {
             // En-tête Content-Length invalide
-            std::string errorPagePath = getErrorPageFullPath(400, location, server);
-            result.response = handleError(400, errorPagePath);
+            result.response = handleError(400, getErrorPageFullPath(400, location, server));
             result.responseReady = true;
             return;
         }
@@ -140,8 +144,7 @@ void RequestHandler::process(const Server* server, const Location* location, con
 
         if (clientMaxBodySize > 0 && contentLength > clientMaxBodySize) {
             std::cout << YELLOW << "client max body size "<<clientMaxBodySize << " vs content length " << contentLength << RESET << std::endl;//test
-            std::string errorPagePath = getErrorPageFullPath(413, location, server);
-            result.response = handleError(413, errorPagePath);
+            result.response = handleError(413, getErrorPageFullPath(413, location, server));
             result.responseReady = true;
             return;
         }
@@ -165,8 +168,7 @@ void RequestHandler::process(const Server* server, const Location* location, con
             result.responseReady = false;
             return;
         } else {
-            std::string errorPagePath = getErrorPageFullPath(500, location, server);
-            result.response = handleError(500, errorPagePath);
+            result.response = handleError(500, getErrorPageFullPath(500, location, server));
             result.responseReady = true;
             return;
         }
@@ -194,8 +196,7 @@ void RequestHandler::process(const Server* server, const Location* location, con
     }
 
     // Si aucune condition précédente n'est satisfaite, retourner une erreur 405
-    std::string errorPagePath = getErrorPageFullPath(405, location, server);
-    result.response = handleError(405, errorPagePath);
+    result.response = handleError(405, getErrorPageFullPath(405, location, server));
     result.response.setHeader("Allow", join(allowedMethods, ", "));
     result.responseReady = true;
 }
@@ -379,48 +380,40 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
 
     // Vérifier la sécurité du chemin
     if (!isPathSecure(root, fullPath)) {
-        std::string errorPagePath = getErrorPageFullPath(403, location, server);
-        return handleError(403, errorPagePath);
+        return handleError(403, getErrorPageFullPath(403, location, server));
     }
 
     // Vérifier si le fichier existe et est accessible
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
         if (errno == EACCES) {
-            std::string errorPagePath = getErrorPageFullPath(403, location, server);
-            return handleError(403, errorPagePath); // Forbidden
+            return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         } else if (errno == ENOENT || errno == ENOTDIR) {
-            std::string errorPagePath = getErrorPageFullPath(404, location, server);
-            return handleError(404, errorPagePath); // Not Found
+            return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
         } else {
-            std::string errorPagePath = getErrorPageFullPath(500, location, server);
-            return handleError(500, errorPagePath); // Internal Server Error
+            return handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
         }
     }
 
     // Vérifier que c'est un fichier régulier
     if (!S_ISREG(fileStat.st_mode)) {
-        std::string errorPagePath = getErrorPageFullPath(403, location, server);
-        return handleError(403, errorPagePath); // Forbidden
+        return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
     }
 
      // Vérifier la taille du fichier (10Mo max)
     const size_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
     if (static_cast<size_t>(fileStat.st_size) > MAX_FILE_SIZE) {
         std::cerr << "File size exceeds maximum allowed size of 10 MB: " << fileStat.st_size << " bytes" << std::endl;
-        std::string errorPagePath = getErrorPageFullPath(501, location, server);
-        return handleError(501, errorPagePath); // Not Implemented
+        return handleError(501, getErrorPageFullPath(501, location, server)); // Not Implemented
     }
 
     // Ouvrir le fichier demandé
     std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open()) {
         if (errno == EACCES) {
-            std::string errorPagePath = getErrorPageFullPath(403, location, server);
-            return handleError(403, errorPagePath); // Forbidden
+            return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         } else {
-            std::string errorPagePath = getErrorPageFullPath(404, location, server);
-            return handleError(404, errorPagePath); // Not Found
+            return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
         }
     }
 
@@ -456,8 +449,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     // Vérifier que le Content-Type est multipart/form-data
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != 0 ) {
-        std::string errorPagePath = getErrorPageFullPath(400, location, server);
-        response = handleError(400, errorPagePath);
+        response = handleError(400, getErrorPageFullPath(400, location, server));
         return response;
     }
 
@@ -466,8 +458,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     std::string::size_type boundaryPos = contentType.find(boundaryPrefix);
     if (boundaryPos == std::string::npos) {
         // Pas de boundary trouvé
-        std::string errorPagePath = getErrorPageFullPath(400, location, server);
-        response = handleError(400, errorPagePath);
+        response = handleError(400, getErrorPageFullPath(400, location, server));
         return response;
     }
     boundaryPos += boundaryPrefix.length();
@@ -481,8 +472,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     struct stat dirStat;
     if (stat(uploadDirectory.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode)) {
         std::cerr << "Upload directory does not exist: " << uploadDirectory << std::endl;
-        std::string errorPagePath = getErrorPageFullPath(500, location, server);
-        response = handleError(500, errorPagePath);
+        response = handleError(500, getErrorPageFullPath(500, location, server));
         return response;
     }
 
@@ -521,8 +511,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
                     std::cout << "File saved: " << fullPath << std::endl;
                 } else {
                     std::cerr << "Failed to save file: " << fullPath << std::endl;
-                    std::string errorPagePath = getErrorPageFullPath(500, location, server);
-                    response = handleError(500, errorPagePath);
+                    response = handleError(500, getErrorPageFullPath(500, location, server));
                     return response;
                 }
             }
@@ -551,8 +540,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     // Gérer le cas où le chemin se termine par un '/'
     if (!requestPath.empty() && requestPath[requestPath.size() - 1] == '/') {
         // Les requêtes DELETE ne devraient pas se terminer par un '/', renvoyer une erreur
-        std::string errorPagePath = getErrorPageFullPath(400, location, server);
-        response = handleError(400, errorPagePath);
+        response = handleError(400, getErrorPageFullPath(400, location, server));
         return response;
     }
 
@@ -570,8 +558,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 
     // Sécuriser le chemin
     if (!isPathSecure(root, fullPath)) {
-        std::string errorPagePath = getErrorPageFullPath(403, location, server);
-        response = handleError(403, errorPagePath); // Forbidden
+        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
@@ -579,13 +566,11 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
         if (errno == ENOENT) {
-            std::string errorPagePath = getErrorPageFullPath(404, location, server);
-            response = handleError(404, errorPagePath); // Not Found
+            response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
             return response;
         } else {
             std::cerr << "RequestHandler::handleDeletion : Error accessing file: " << strerror(errno) << std::endl;
-            std::string errorPagePath = getErrorPageFullPath(500, location, server);
-            response = handleError(500, errorPagePath); // Internal Server Error
+            response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
             return response;
         }
     }
@@ -593,24 +578,21 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     // Vérifier que c'est un fichier régulier
     if (!S_ISREG(fileStat.st_mode)) {
         std::cerr << "RequestHandler::handleDeletion : Target is not a regular file." << std::endl;
-        std::string errorPagePath = getErrorPageFullPath(403, location, server);
-        response = handleError(403, errorPagePath); // Forbidden
+        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
     // Vérifier les permissions de suppression
     if (access(fullPath.c_str(), W_OK) != 0) {
         std::cerr << "RequestHandler::handleDeletion : No permission to delete the file: " << strerror(errno) << std::endl;
-        std::string errorPagePath = getErrorPageFullPath(403, location, server);
-        response = handleError(403, errorPagePath); // Forbidden
+        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
     // Tenter de supprimer le fichier
     if (unlink(fullPath.c_str()) != 0) {
         std::cerr << "RequestHandler::handleDeletion : Failed to delete file: " << strerror(errno) << std::endl;
-        std::string errorPagePath = getErrorPageFullPath(500, location, server);
-        response = handleError(500, errorPagePath); // Internal Server Error
+        response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
         return response;
     }
 
