@@ -135,8 +135,34 @@ curl -v -X DELETE http://127.0.0.1:8080/index.html
 Situations possibles :
 
 Inactivité du client : Le client met trop de temps à envoyer l'intégralité de sa requête, et le serveur ferme la connexion après un certain délai.
+curl --max-time 15 http://127.0.0.1:8080/index.html
 
 Délai dépassé lors du téléchargement : Lors du téléversement de fichiers, si le client met trop de temps à envoyer les données, le serveur peut renvoyer cette erreur.
+
+413 - Request too long
+
+provoquer l' erreur (fichier supp a 12Mo):
+dd if=/dev/zero bs=1M count=12 | curl -X POST http://localhost:8080/cgi-bin/uploads/ \
+  -H "Content-Type: application/x-www-form-urlencoded" \ 
+  --data-binary @-
+
+414 - URI too long (limite choisie len>100)
+http://127.0.0.1:8080/URItoolooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
+
+415 - Unsupported media type
+Fonctionne :
+echo -n "name=nom&email=testmail&message=test" | curl -X POST http://localhost:8080/cgi-bin/contactForm.py \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-binary @-
+
+provoque err 415 :
+echo -n "name=nom&email=testmail&message=test" | curl -X POST http://localhost:8080/cgi-bin/contactForm.py \
+  -H "Content-Type: text/plain" \                       
+  --data-binary @-
+
+(echo -n "Hello "; yes "World" | head -n 10) | curl -X POST http://localhost:8080/cgi-bin/contactForm.py \
+  -H "Content-Type: text/plain" \
+  --data-binary @-
 
 7. 500 Internal Server Error (500 - Erreur interne du serveur)
 Situations possibles :

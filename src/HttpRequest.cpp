@@ -128,8 +128,18 @@ bool HttpRequest::validateHeaders() {
 }
 
 bool HttpRequest::validatePOSTContentLength() {
+    // Recherche de l'en-tête Transfer-Encoding: chunked
+    std::map<std::string, std::string>::iterator it = headers_.find("transfer-encoding");
+    if (it != headers_.end()) {
+        contentLength_ = 0;
+        std::cerr << "Chuncked encoding request are not implemented" << std::endl;
+        parseError_ = true;
+        parseErrorCode_ = 501; // Length Required
+        return false;
+    }
+    
     // Recherche de l'en-tête Content-Length
-    std::map<std::string, std::string>::iterator it = headers_.find("content-length");
+    it = headers_.find("content-length");
     if (it == headers_.end()) {
         contentLength_ = 0;
         std::cerr << "Missing Content-Length header in POST request." << std::endl;
@@ -209,7 +219,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     std::string method, rawPath, httpVersion;
 
     // Limiter la taille max d' une requete
-    const size_t MAX_REQUEST_LINE_LENGTH = 4096; // Limite typique (à ajuster selon les besoins)
+    const size_t MAX_REQUEST_LINE_LENGTH = 100; // Limite typique (à ajuster selon les besoins)
     if (line.length() > MAX_REQUEST_LINE_LENGTH) {
         std::cerr << "Request line too long: " << line << std::endl;
         parseError_ = true;
