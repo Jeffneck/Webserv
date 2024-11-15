@@ -91,8 +91,7 @@ void WebServer::runEventLoop() {
             }
         }
 
-        checkCgiTimeouts();//verif si les timeouts ce sont declenches avant d' entrer dans poll
-        checkDataSocketTimeouts();
+        
         // Appel à poll()
         int timeout = 12000; // Temps ms avant de sortir de l' etat de poll
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
@@ -162,6 +161,8 @@ void WebServer::runEventLoop() {
             }
         }
 
+        checkCgiTimeouts();//verif si les timeouts ce sont declenches avant d' entrer dans poll
+        checkDataSocketTimeouts();
         // Nettoyage des sockets fermées
         dataHandler_.removeClosedSockets();
     }
@@ -196,7 +197,7 @@ void WebServer::checkCgiTimeouts() {
 }
 
 void WebServer::checkDataSocketTimeouts() {
-    // std::cout << "WebServer::checkDataSocketTimeouts" << std::endl; // le programme n' arrive jamais ici
+    std::cout << "WebServer::checkDataSocketTimeouts" << std::endl;
     const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
     time_t currentTime = time(NULL);
 
