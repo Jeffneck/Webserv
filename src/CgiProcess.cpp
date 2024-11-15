@@ -96,19 +96,6 @@ void CgiProcess::terminate() {
     }
 } 
 
-// bool CgiProcess::isRunning() {
-//     int status;
-//     pid_t result = waitpid(pid_, &status, WNOHANG);
-//     if (result == 0) {
-//         // Le processus est toujours en cours d'exécution
-//         return true;
-//     } else {
-//         // Le processus est terminé
-//         pid_ = -1; // Mettre à jour pid_ pour indiquer que le processus n'est plus actif
-//         return false;
-//     }
-// }
-
 bool CgiProcess::isRunning() {
     pid_t result = waitpid(pid_, &cgiExitStatus_, WNOHANG);
     if (result == 0) {
@@ -129,14 +116,46 @@ int CgiProcess::getExitStatus() const {
     return cgiExitStatus_;
 }
 
-std::string CgiProcess::readOutput() {
-    char buffer[4096];
-    ssize_t bytesRead = read(pipefd_[0], buffer, sizeof(buffer));
-    if (bytesRead > 0) {
-        return std::string(buffer, bytesRead);
-    }
-    return "";
-}
+
+// std::string CgiProcess::readOutput() {
+//     char buffer[4096];
+//     ssize_t bytesRead = read(pipefd_[0], buffer, sizeof(buffer));
+
+//     if (bytesRead > 0) {
+//         // Des données ont été lues avec succès
+//         return std::string(buffer, bytesRead);
+//     } else if (bytesRead == 0) {
+//         // EOF atteint : le processus CGI a terminé son écriture
+//         std::cout << "CgiProcess::readOutput(): EOF atteint sur le pipe (read() a retourné 0)." << std::endl;
+//         // Fermer le descripteur de lecture du pipe
+//         close(pipefd_[0]);
+//         pipefd_[0] = -1;
+//         // Indiquer que la lecture est terminée, par exemple en utilisant un drapeau
+//         outputComplete_ = true;
+//         return "";
+//     } else if (bytesRead == -1) {
+//         // Une erreur est survenue lors de la lecture
+//         std::cerr << "CgiProcess::readOutput(): Erreur lors de read() sur le pipe (retourne -1)." << std::endl;
+//         // Fermer le descripteur de lecture du pipe
+//         close(pipefd_[0]);
+//         pipefd_[0] = -1;
+//         // Indiquer qu'une erreur s'est produite
+//         outputError_ = true;
+//         return "";
+//     }
+//     // Par sécurité, retourner une chaîne vide
+//     return "";
+// }
+
+// bool CgiProcess::isOutputComplete() const
+// {
+//     return outputComplete_;
+// }
+
+// bool CgiProcess::isOutputError() const
+// {
+//     return outputError_;
+// }
 
 void CgiProcess::createEnvp(const std::vector<std::string>& envVars) {
     // Stocker les chaînes d'environnement pour assurer leur durée de vie

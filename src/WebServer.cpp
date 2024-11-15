@@ -70,10 +70,7 @@ void WebServer::runEventLoop() {
             // Socket client
             struct pollfd pfd;
             pfd.fd = dataSocket->getSocket();
-            pfd.events = POLLIN;
-            if (dataSocket->hasDataToSend()) {
-                pfd.events |= POLLOUT;
-            }
+            pfd.events = POLLIN | POLLOUT;
             pfd.revents = 0;
             pollfds.push_back(pfd);
             pollListeningSockets.push_back(NULL); // Pas de ListeningSocket pour les DataSocket
@@ -94,6 +91,8 @@ void WebServer::runEventLoop() {
             }
         }
 
+        checkCgiTimeouts();//verif si les timeouts ce sont declenches avant d' entrer dans poll
+        checkDataSocketTimeouts();
         // Appel à poll()
         int timeout = 12000; // Temps ms avant de sortir de l' etat de poll
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
@@ -102,7 +101,6 @@ void WebServer::runEventLoop() {
             break;
         }
 
-        checkCgiTimeouts();//verif si les timeouts ce sont declenches avant d' entrer dans poll
 
         // Traitement des événements
         for (i = 0; i < pollfds.size(); ++i) {
@@ -135,16 +133,17 @@ void WebServer::runEventLoop() {
                     }
                 }
                 if (pollfds[i].revents & POLLOUT) {
-                    std::cout << "POLLOUT Datasocket close" << std::endl;
-                    if (!dataSocket->sendData()) {
-                        std::cout << "POLLOUT Datasocket close" << std::endl;
-                        dataSocket->closeSocket();
+                    if (dataSocket->hasDataToSend()) {
+                        if (!dataSocket->sendData()) {
+                            dataSocket->closeSocket();
+                        }
                     }
                 }
-                if (pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
-                    std::cout << "POLLHUP.. Datasocket close" << std::endl;
-                    dataSocket->closeSocket();
-                }
+
+                // if (pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                //     std::cout << "POLLHUP.. Datasocket close" << std::endl;
+                //     dataSocket->closeSocket();
+                // }
             } else if (pollFdTypes[i] == 2) {
                 // Pipe CGI
                 DataSocket* dataSocket = pollDataSockets[i];
@@ -163,7 +162,7 @@ void WebServer::runEventLoop() {
             }
         }
 
-        // Nettoyage des sockets fermées attention ne pas reactiver a moins d' avoir modifie la logique de fermeture car  les sockets sont deja fermes avant donc cela genere des problemes
+        // Nettoyage des sockets fermées
         dataHandler_.removeClosedSockets();
     }
     std::cout << "Boucle d'événements terminée. Fermeture du serveur." << std::endl;
@@ -174,9 +173,10 @@ void WebServer::runEventLoop() {
 
 void WebServer::checkCgiTimeouts() {
     std::vector<DataSocket*>::iterator it = activeCgiSockets_.begin();
+    // int i = 0; //debug
     while (it != activeCgiSockets_.end()) {
         DataSocket* dataSocket = *it;
-        std::cout << "WebServer::checkCgiTimeouts" << std::endl; // le programme n' arrive jamais ici
+        // std::cout << "WebServer::checkCgiTimeouts"<< i++ << std::endl; // le programme n' arrive jamais ici
         if (dataSocket->hasCgiProcess()) {
             if (!dataSocket->cgiProcessIsRunning()) {
                 // Le processus CGI n'est plus en cours d'exécution
@@ -195,6 +195,19 @@ void WebServer::checkCgiTimeouts() {
     }
 }
 
+void WebServer::checkDataSocketTimeouts() {
+    // std::cout << "WebServer::checkDataSocketTimeouts" << std::endl; // le programme n' arrive jamais ici
+    const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
+    time_t currentTime = time(NULL);
+
+    for (size_t i = 0; i < dataSockets.size(); ++i) {
+        DataSocket* dataSocket = dataSockets[i];
+        if (difftime(currentTime, dataSocket->getLastActivityTime()) > INACTIVITY_TIMEOUT) {
+            std::cout << RED << "DataSocket timeout. Closing inactive socket fd: " << dataSocket->getSocket() << RESET << std::endl;
+            dataSocket->closeSocket();
+        }
+    }
+}
 
 void WebServer::cleanUp() {
     listeningHandler_.cleanUp();

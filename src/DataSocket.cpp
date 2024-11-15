@@ -12,7 +12,10 @@
 DataSocket::DataSocket(int fd, const std::vector<Server*>& servers, const Config* config)
     : client_fd_(fd), associatedServers_(servers), requestComplete_(false), config_(config),
       sendBufferOffset_(0), cgiProcess_(NULL), cgiPipeFd_(-1), cgiComplete_(true),
-      shouldCloseAfterSend_(false) { }
+      shouldCloseAfterSend_(false) {
+    // Initialiser le temps de la dernière activité à l'instant de la création
+    lastActivityTime_ = time(NULL);
+}
 
 
 DataSocket::~DataSocket() {
@@ -29,6 +32,7 @@ bool DataSocket::receiveData() {
     ssize_t bytesRead = recv(client_fd_, buffer, sizeof(buffer), 0);
 
     if (bytesRead > 0) {
+        lastActivityTime_ = time(NULL);
         std::string data(buffer, bytesRead);
         httpRequest_.appendData(data);
 
@@ -48,11 +52,15 @@ bool DataSocket::receiveData() {
         }
         return true;
     } else if (bytesRead == 0) {
-        std::cout << "Bytesread = 0" << std::endl;
-        return false;
-    } else {
+        // Le client a fermé proprement la connexion
+        std::cout << "Le client a fermé la connexion (recv() a retourné 0)." << std::endl;
+        return false; 
+    } else if (bytesRead == -1) {
+        // Une erreur est survenue lors de la réception
+        std::cerr << "Erreur lors de recv() (retourne -1). Fermeture de la connexion." << std::endl;
         return false;
     }
+    return true;
 }
 
 void DataSocket::handleParseError(int errorCode) {
@@ -116,6 +124,7 @@ bool DataSocket::sendData() {
 
     ssize_t bytesSent = send(client_fd_, sendBuffer_.c_str() + sendBufferOffset_, sendBuffer_.size() - sendBufferOffset_, 0);
     if (bytesSent > 0) {
+        lastActivityTime_ = time(NULL);
         sendBufferOffset_ += bytesSent;
         if (sendBufferOffset_ >= sendBuffer_.size()) {
             sendBuffer_.clear();
@@ -126,9 +135,14 @@ bool DataSocket::sendData() {
             return true;
         }
     } else if (bytesSent == 0) {
-        return false;
-    } else {
-        return false;
+        // Aucun octet n'a été envoyé, possible dans un contexte non bloquant
+        std::cerr << "Aucun octet n'a été envoyé (send() a retourné 0)." << std::endl;
+        // Vous pouvez décider de réessayer plus tard ou de fermer la connexion
+        return true; // Dans ce cas, nous choisissons de réessayer
+    } else if (bytesSent == -1) {
+        // Une erreur est survenue lors de l'envoi
+        std::cerr << "Erreur lors de send() (retourne -1). Fermeture de la connexion." << std::endl;
+        return false; // Fermer la socket
     }
 
     return true;
@@ -152,6 +166,11 @@ int DataSocket::getSocket() const {
     return client_fd_;
 }
 
+time_t DataSocket::getLastActivityTime() const {
+    return lastActivityTime_;
+}
+
+
 // CGI handling methods
 bool DataSocket::hasCgiProcess() const {
     return cgiProcess_ != NULL;
@@ -172,6 +191,7 @@ void DataSocket::readFromCgiPipe() {
     ssize_t bytesRead = read(cgiPipeFd_, buffer, sizeof(buffer));
 
     if (bytesRead > 0) {
+        lastActivityTime_ = time(NULL);
         cgiOutputBuffer_.append(buffer, bytesRead);
         std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
     } else if (bytesRead == 0) {
@@ -208,7 +228,7 @@ void DataSocket::readFromCgiPipe() {
             response.setStatusCode(200);
             response.setBody(cgiOutputBuffer_);
             response.setHeader("Content-Type", "text/html; charset=UTF-8");
-            response.setHeader("Connection", "close");
+            // response.setHeader("Connection", "close");
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
             cgiOutputBuffer_.clear();
@@ -216,90 +236,11 @@ void DataSocket::readFromCgiPipe() {
         
         // EOF atteint, le processus CGI a terminé
         closeCgiPipe();
-    } 
+    }else{
+        std::cerr << "an error occured while reading on cgi Pipe" << std::endl;
+        terminateCgiProcess();
+    }
 }
-
-// void DataSocket::readFromCgiPipe() {
-//     std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl; // Debug
-    
-//     char buffer[4096];
-//     ssize_t bytesRead = read(cgiPipeFd_, buffer, sizeof(buffer));
-
-//     if (bytesRead > 0) {
-//         cgiOutputBuffer_.append(buffer, bytesRead);
-//         std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
-//     } else if (bytesRead == 0) {
-//         // EOF atteint, le processus CGI a terminé
-//         closeCgiPipe();
-
-//         // Vérifier le statut de sortie du CGI
-//         int status;
-//         pid_t pid = waitpid(cgiPid_, &status, WNOHANG);
-//         if (pid == -1) {
-//             // Erreur lors de waitpid
-//             std::cerr << "Error waiting for CGI process: " << strerror(errno) << std::endl;
-//             HttpResponse response = handleError(500, getAssociatedServer()->getErrorPageFullPath(500));
-//             sendBuffer_ = response.generateResponse();
-//             sendBufferOffset_ = 0;
-//         } else if (pid == 0) {
-//             // Le processus CGI n'a pas encore terminé, vous pouvez gérer un timeout ici si nécessaire
-//             std::cerr << "CGI process is still running." << std::endl;
-//             // Optionnel : Implémenter une gestion de timeout si le processus prend trop de temps
-//         } else {
-//             if (WIFEXITED(status)) {
-//                 int exitStatus = WEXITSTATUS(status);
-//                 if (exitStatus != 0) {
-//                     // CGI a échoué, renvoyer une erreur 502
-//                     std::cerr << "CGI process exited with error code: " << exitStatus << std::endl;
-//                     HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
-//                     sendBuffer_ = response.generateResponse();
-//                     sendBufferOffset_ = 0;
-//                 } else {
-//                     // CGI a réussi, envoyer la réponse
-//                     HttpResponse response;
-//                     response.setStatusCode(200);
-//                     response.setBody(cgiOutputBuffer_);
-//                     response.setHeader("Content-Type", "text/html; charset=UTF-8");
-//                     response.setHeader("Connection", "close");
-//                     sendBuffer_ = response.generateResponse();
-//                     sendBufferOffset_ = 0;
-//                     cgiOutputBuffer_.clear();
-//                 }
-//             } else if (WIFSIGNALED(status)) {
-//                 // CGI s'est terminé suite à un signal, par exemple SIGSEGV
-//                 std::cerr << "CGI process was terminated by a signal." << std::endl;
-//                 HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
-//                 sendBuffer_ = response.generateResponse();
-//                 sendBufferOffset_ = 0;
-//             } else {
-//                 // Autres types de terminaisons
-//                 std::cerr << "CGI process terminated abnormally." << std::endl;
-//                 HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
-//                 sendBuffer_ = response.generateResponse();
-//                 sendBufferOffset_ = 0;
-//             }
-//         }
-//     } else {
-//         // bytesRead < 0, une erreur s'est produite
-//         if (!cgiProcess_->isRunning()) {
-//             // Le processus CGI s'est terminé sans envoyer EOF
-//             std::cerr << "CGI process terminated without sending EOF." << std::endl;
-//             closeCgiPipe();
-
-//             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
-//             sendBuffer_ = response.generateResponse();
-//             sendBufferOffset_ = 0;
-//             cgiOutputBuffer_.clear();
-//         } else {
-//             // Gérer d'autres types d'erreurs de lecture si nécessaire
-//             std::cerr << "Error reading from CGI pipe: " << strerror(errno) << std::endl;
-//             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
-//             sendBuffer_ = response.generateResponse();
-//             sendBufferOffset_ = 0;
-//             cgiOutputBuffer_.clear();
-//         }
-//     }
-// }
 
 bool DataSocket::cgiProcessIsRunning() const {
     if (cgiProcess_) {

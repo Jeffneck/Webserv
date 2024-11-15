@@ -17,7 +17,7 @@
 usage() {
     echo "Usage: $0 [mode] [nombre_d_utilisateurs] [duree_en_minutes]"
     echo "Modes:"
-    echo "  Aucun argument : Mode par défaut (Siege -b 1 user 1 minute, surveille avec htop et netstat)"
+    echo "  Aucun argument : Mode par défaut (Siege -b 1 user 1 minute)"
     echo "  1 : Surveiller avec ps"
     echo "  2 : Surveiller avec Valgrind"
     echo "  3 : Surveiller avec netstat"

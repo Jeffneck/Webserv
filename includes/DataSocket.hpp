@@ -4,7 +4,7 @@
 
 #include <vector>
 #include <string>
-// #include <ctime>
+#include <ctime>
 #include "Server.hpp"
 #include "Config.hpp"
 #include "HttpRequest.hpp"
@@ -25,6 +25,7 @@ public:
     void closeSocket();
     int getSocket() const;
     const Server* getAssociatedServer() const;
+    time_t getLastActivityTime() const;
 
     // CGI handling methods
     bool hasCgiProcess() const;
@@ -46,6 +47,7 @@ private:
     const Config *config_;
     std::string sendBuffer_;
     size_t sendBufferOffset_;
+    time_t lastActivityTime_; 
 
     // CGI
     CgiProcess* cgiProcess_;

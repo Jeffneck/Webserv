@@ -145,7 +145,7 @@
     <div class="container">
         <div class="upload-form">
             <h1>Téléverser un Fichier</h1>
-            <form id="uploadForm" action="/cgi-bin/uploads/" method="post" enctype="multipart/form-data">
+            <form id="uploadForm" enctype="multipart/form-data">
                 <label for="file">Choisissez un fichier à téléverser :</label>
                 <input type="file" id="file" name="file" required>
                 <input type="submit" value="Téléverser">
@@ -161,34 +161,38 @@
         <p>&copy; 2024 Webserv. Ceci est un footer</p>
     </footer>
 
-    <!-- Script pour Gérer les Feedbacks (Optionnel) -->
+    <!-- Script pour Gérer la Soumission et Afficher le Feedback -->
     <script>
         document.getElementById('uploadForm').addEventListener('submit', function(event) {
-            // Vous pouvez ajouter ici des validations supplémentaires si nécessaire
+            event.preventDefault();
+            const form = document.getElementById('uploadForm');
+            const formData = new FormData(form);
 
-            // Exemple de feedback sans rechargement de la page (utiliser AJAX si nécessaire)
-            // Pour le moment, cette partie est laissée vide car le formulaire utilise une soumission traditionnelle
-        });
-
-        // Optionnel : Afficher un message après le téléversement réussi ou échoué
-        // Cela nécessite que le serveur redirige vers cette page avec des paramètres indiquant le résultat
-        window.addEventListener('DOMContentLoaded', function() {
-            // Exemple : Utiliser les paramètres d'URL pour afficher un message
-            var params = new URLSearchParams(window.location.search);
-            if (params.has('success')) {
-                showMessage('Fichier téléversé avec succès.', 'success');
-            } else if (params.has('error')) {
-                showMessage('Erreur lors du téléversement. Veuillez réessayer.', 'error');
-            }
+            fetch('/cgi-bin/uploads/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.status === 201) {
+                    return response.text(); // Lire la réponse en texte brut
+                } else {
+                    throw new Error('Erreur lors du téléversement. Code de statut : ' + response.status);
+                }
+            })
+            .then(text => {
+                showMessage(text, 'success');
+            })
+            .catch(error => {
+                showMessage(error.message, 'error');
+            });
         });
 
         function showMessage(message, type) {
-            var messageDiv = document.getElementById('message');
+            const messageDiv = document.getElementById('message');
             messageDiv.textContent = message;
             messageDiv.className = 'message ' + type;
             messageDiv.style.display = 'block';
-            // Masquer le message après 5 secondes
-            setTimeout(function() {
+            setTimeout(() => {
                 messageDiv.style.display = 'none';
             }, 5000);
         }

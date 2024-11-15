@@ -103,7 +103,7 @@ bool HttpRequest::handleBody() {
     size_t bodyReceivedLength = rawData_.size() - bodyStartPos_;
     if (bodyReceivedLength >= contentLength_) {
         body_ = rawData_.substr(bodyStartPos_, contentLength_);
-        std::cout << GREEN << " HttpRequest::handleBody() contentlen: "<< contentLength_<< body_ << RESET << std::endl;//test
+        // std::cout << GREEN << " HttpRequest::handleBody() contentlen: "<< contentLength_<< body_ << RESET << std::endl;//test
         state_ = COMPLETE;
         return true;
     } else {
@@ -132,7 +132,7 @@ bool HttpRequest::validatePOSTContentLength() {
     std::map<std::string, std::string>::iterator it = headers_.find("transfer-encoding");
     if (it != headers_.end()) {
         contentLength_ = 0;
-        std::cerr << "Chuncked encoding request are not implemented" << std::endl;
+        std::cerr << "Chuncked requests are not implemented" << std::endl;
         parseError_ = true;
         parseErrorCode_ = 501; // Length Required
         return false;
@@ -159,12 +159,12 @@ bool HttpRequest::validatePOSTContentLength() {
     }
 
     // Vérification si Content-Length dépasse 10 Mo (10 * 1024 * 1024 octets)
-    if (static_cast<size_t>(length) > 10 * 1024 * 1024) {
-        std::cerr << "Content-Length exceeds 10 Mo (max size supported by the server), length: " << length << std::endl;
-        parseError_ = true;
-        parseErrorCode_ = 413; // Payload Too Large
-        return false;
-    }
+    // if (static_cast<size_t>(length) > 10 * 1024 * 1024) {
+    //     std::cerr << "Content-Length exceeds 10 Mo (max size supported by the server), length: " << length << std::endl;
+    //     parseError_ = true;
+    //     parseErrorCode_ = 413; // Payload Too Large
+    //     return false;
+    // }
 
     contentLength_ = static_cast<size_t>(length);
     return true;
@@ -410,7 +410,7 @@ std::string HttpRequest::getHeader(const std::string& headerName) const {
 }
 
 const std::string& HttpRequest::getBody() const {
-    std::cout << GREEN <<"HttpRequest::getBody()  " << body_ << RESET << std::endl;//test
+    // std::cout << GREEN <<"HttpRequest::getBody()  " << body_ << RESET << std::endl;//test
     return body_;
 }
 

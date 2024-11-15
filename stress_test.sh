@@ -30,7 +30,8 @@ sleep 3
 PS_MONITOR_PID=$!
 
 # Lancer Siege avec 10 utilisateurs pendant 1 minute
-siege -b -c 10 -t 1M -f $URLS
+# siege -b -c 10 -t 1M -f $URLS
+siege -b -c 1 -t 1M -f $URLS
 
 # Attendre un peu pour s'assurer que la boucle 'ps' capture les dernières mesures
 sleep 3

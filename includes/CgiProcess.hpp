@@ -16,9 +16,11 @@ public:
     bool isRunning();
     int getPipeFd() const;
     int getExitStatus() const;
-    std::string readOutput();
+    // std::string readOutput();
 
     bool hasTimedOut() const;
+    bool isOutputComplete() const;
+    bool isOutputError() const;
     void terminate();
 
 private:
@@ -42,6 +44,10 @@ private:
 
     //stocker le statut en sortie de waitpid
     int cgiExitStatus_;
+
+    //verifier la sortie de read
+    // bool outputComplete_;
+    // bool outputError_;
 
     // Méthodes pour créer et nettoyer les arguments et l'environnement
     void createArgv(const std::map<std::string, std::string>& scriptParams);

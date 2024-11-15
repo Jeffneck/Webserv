@@ -1,4 +1,6 @@
-ajouter le contenu de listen aux servernames 127.0.0.1:8080
+televerser un fichier dont la content length est trop grand provoque une erreur sur firefox
+
+ajouter le contenu de listen aux servernames 127.0.0.1:8080 
 
 televerser des files est bloquant
 

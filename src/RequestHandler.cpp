@@ -400,12 +400,12 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
     }
 
-     // Vérifier la taille du fichier (10Mo max)
-    const size_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
-    if (static_cast<size_t>(fileStat.st_size) > MAX_FILE_SIZE) {
-        std::cerr << "File size exceeds maximum allowed size of 10 MB: " << fileStat.st_size << " bytes" << std::endl;
-        return handleError(501, getErrorPageFullPath(501, location, server)); // Not Implemented
-    }
+    //  // Vérifier la taille du fichier (10Mo max)
+    // const size_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+    // if (static_cast<size_t>(fileStat.st_size) > MAX_FILE_SIZE) {
+    //     std::cerr << "File size exceeds maximum allowed size of 10 MB: " << fileStat.st_size << " bytes" << std::endl;
+    //     return handleError(501, getErrorPageFullPath(501, location, server)); // Not Implemented
+    // }
 
     // Ouvrir le fichier demandé
     std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
@@ -434,7 +434,7 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         std::string contentType = getMimeType(extension);
         if (!contentType.empty()) {
             response.setHeader("Content-Type", contentType);
-            response.setHeader("Connection", "close");
+            // response.setHeader("Connection", "close");
         }
     }
 
@@ -600,7 +600,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     response.setStatusCode(204);
     response.setBody("File deleted successfully.");
     response.setHeader("Content-Type", "text/plain; charset=UTF-8");
-    response.setHeader("Connection", "close");
+    // response.setHeader("Connection", "close");
 
     return response;
 }
@@ -635,7 +635,7 @@ HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, cons
     response.setStatusCode(200);
     response.setBody(ss.str());
     response.setHeader("Content-Type", "text/html; charset=UTF-8");
-    response.setHeader("Connection", "close");
+    // response.setHeader("Connection", "close");
 
     return response; 
 }

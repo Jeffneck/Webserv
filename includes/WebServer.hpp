@@ -12,6 +12,8 @@
 #include "ConfigParser.hpp"
 #include "Color_Macros.hpp"
 
+const time_t INACTIVITY_TIMEOUT = 45; // en secondes
+
 class WebServer {
 private:
     ListeningSocketHandler listeningHandler_; // Gère les sockets d'écoute
@@ -27,6 +29,7 @@ public:
     void start(); // Démarre le serveur
     void runEventLoop(); // Boucle principale d'événements
     void checkCgiTimeouts(); //verif si les cgi ont depasse leur delai hors de la boucle poll
+    void checkDataSocketTimeouts(); //verif si les datasockets ont depasse leur delai hors de la boucle poll
     void cleanUp(); // Nettoie les ressources et ferme les sockets
 };
 
