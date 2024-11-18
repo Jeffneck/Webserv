@@ -74,16 +74,13 @@ void DataSocket::handleParseError(int errorCode) {
     }
     sendBuffer_ = result.response.generateResponse();
     sendBufferOffset_ = 0;
-    // Indiquer que la connexion doit être fermée après l'envoi
+    //An error happened during parsing so the socket need to be closed
     shouldCloseAfterSend_ = true;
 }
 
 const Server* DataSocket::getAssociatedServer() const {
-    // Implémentez cette méthode pour retourner le serveur associé à cette DataSocket
-    // Cela dépend de votre architecture, mais souvent vous pouvez obtenir le serveur à partir des associations
-    // passées lors de la création de DataSocket dans WebServer::runEventLoop()
     if (!associatedServers_.empty()) {
-        return associatedServers_[0]; // Exemple simplifié
+        return associatedServers_[0];
     }
     return NULL;
 }
@@ -103,7 +100,7 @@ void DataSocket::processRequest() {
         cgiProcess_ = result.cgiProcess;
         cgiPipeFd_ = cgiProcess_->getPipeFd();
         // cgiPid_ = cgiProcess_->getPid();
-        std::cout << CYAN <<"DataSocket::processRequest result.cgiprocess : " << cgiPipeFd_ << RESET <<std::endl;//test
+        // std::cout << CYAN <<"DataSocket::processRequest result.cgiprocess : " << cgiPipeFd_ << RESET <<std::endl;//test
         // std::cout << CYAN <<"DataSocket::processRequest result.cgipid: " << cgiPid_ << RESET <<std::endl;//test
         cgiComplete_ = false;
     } else {
@@ -123,26 +120,28 @@ bool DataSocket::sendData() {
     }
 
     ssize_t bytesSent = send(client_fd_, sendBuffer_.c_str() + sendBufferOffset_, sendBuffer_.size() - sendBufferOffset_, 0);
+    //Data hs been succesfully sent 
     if (bytesSent > 0) {
         lastActivityTime_ = time(NULL);
         sendBufferOffset_ += bytesSent;
         if (sendBufferOffset_ >= sendBuffer_.size()) {
             sendBuffer_.clear();
             sendBufferOffset_ = 0;
+            //If an error detected : shouldCloseAfterSend_ = true
             if (shouldCloseAfterSend_) {
                 return false;
             }
             return true;
         }
-    } else if (bytesSent == 0) {
-        // Aucun octet n'a été envoyé, possible dans un contexte non bloquant
-        std::cerr << "Aucun octet n'a été envoyé (send() a retourné 0)." << std::endl;
-        // Vous pouvez décider de réessayer plus tard ou de fermer la connexion
-        return true; // Dans ce cas, nous choisissons de réessayer
-    } else if (bytesSent == -1) {
-        // Une erreur est survenue lors de l'envoi
-        std::cerr << "Erreur lors de send() (retourne -1). Fermeture de la connexion." << std::endl;
-        return false; // Fermer la socket
+    } 
+    //Sometines occur in non-blocking systems, we will retry to send data
+    else if (bytesSent == 0) {
+        return true;
+    } 
+    //error detected during send, we close the socket responsible
+    else if (bytesSent == -1) {
+        std::cerr << "Error occurs while sending data via a DataSocket" << std::endl;
+        return false;
     }
 
     return true;
@@ -199,8 +198,8 @@ void DataSocket::readFromCgiPipe() {
         handleCgiProcessExitStatus();
         
         // EOF atteint, le processus CGI a terminé
-        std::cerr << "CGI PIPE CLOSED BY EOF" << std::endl;
-        closeCgiPipe();
+        // std::cerr << "CGI PIPE CLOSED BY EOF" << std::endl;
+        // closeCgiPipe();
     }else{
         std::cerr << "an error occured while reading on cgi Pipe" << std::endl;
         terminateCgiProcess();

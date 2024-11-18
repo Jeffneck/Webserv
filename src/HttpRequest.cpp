@@ -16,6 +16,7 @@ HttpRequest::HttpRequest()
       httpVersion_(""), 
       body_(""), 
       contentLength_(0), 
+      bodyStartPos_(0), 
       headersParsed_(false), 
       state_(REQUEST_LINE),
       parseError_(false),
@@ -32,10 +33,8 @@ void HttpRequest::appendData(const std::string& data) {
 
 bool HttpRequest::isComplete() const {
     if (!headersParsed_) {
-        // std::cout << "HttpRequest::isComplete()  : headers are not parsed " << std::endl;//test
         return false;
     }
-    // std::cout << "HttpRequest::isComplete()  : body_ size: " << body_.size() << " / " << contentLength_ << std::endl;//test
 
     return body_.size() >= contentLength_;
 }
@@ -64,11 +63,11 @@ bool HttpRequest::parseRequest() {
 
 bool HttpRequest::handleRequestLine(const std::string& line) {
     if (line == "\r" || line.empty()) {
-        // Requête incomplète
+        // Incomplete Request
         return false;
     }
     if (!parseRequestLine(line)) {
-        // Une erreur s'est produite lors du parsing de la ligne de requête
+        // An error occurred while parsing the request line
         return false;
     }
     state_ = HEADERS;
@@ -81,12 +80,12 @@ bool HttpRequest::handleHeaders(const std::string& line) {
         if (!validateHeaders()) {
             return false;
         }
-        // Enregistrer la position du début du corps
+        // Record the position of the beginning of the body
         bodyStartPos_ = rawData_.find("\r\n\r\n");
         if (bodyStartPos_ != std::string::npos) {
             bodyStartPos_ += 4; // Passer les "\r\n\r\n"
         } else {
-            // Impossible de trouver la fin des en-têtes (ne devrait pas arriver)
+            // Can't find end of headers
             parseError_ = true;
             parseErrorCode_ = 400; // Bad Request
             return false;
@@ -99,15 +98,14 @@ bool HttpRequest::handleHeaders(const std::string& line) {
 }
 
 bool HttpRequest::handleBody() {
-    // Calculer la taille restante du corps à lire
+    // Calculate the remaining body size to be read
     size_t bodyReceivedLength = rawData_.size() - bodyStartPos_;
     if (bodyReceivedLength >= contentLength_) {
         body_ = rawData_.substr(bodyStartPos_, contentLength_);
-        // std::cout << GREEN << " HttpRequest::handleBody() contentlen: "<< contentLength_<< body_ << RESET << std::endl;//test
         state_ = COMPLETE;
         return true;
     } else {
-        // Attendre plus de données
+        //need to read few more times 
         return false;
     }
 }
@@ -128,13 +126,13 @@ bool HttpRequest::validateHeaders() {
 }
 
 bool HttpRequest::validatePOSTContentLength() {
-    // Recherche de l'en-tête Transfer-Encoding: chunked
+    // Search for 'Transfer-Encoding header: chunked'
     std::map<std::string, std::string>::iterator it = headers_.find("transfer-encoding");
     if (it != headers_.end()) {
         contentLength_ = 0;
         std::cerr << "Chuncked requests are not implemented" << std::endl;
         parseError_ = true;
-        parseErrorCode_ = 501; // Length Required
+        parseErrorCode_ = 501;
         return false;
     }
     
@@ -158,21 +156,13 @@ bool HttpRequest::validatePOSTContentLength() {
         return false;
     }
 
-    // Vérification si Content-Length dépasse 10 Mo (10 * 1024 * 1024 octets)
-    // if (static_cast<size_t>(length) > 10 * 1024 * 1024) {
-    //     std::cerr << "Content-Length exceeds 10 Mo (max size supported by the server), length: " << length << std::endl;
-    //     parseError_ = true;
-    //     parseErrorCode_ = 413; // Payload Too Large
-    //     return false;
-    // }
-
     contentLength_ = static_cast<size_t>(length);
     return true;
 }
 
 
 bool HttpRequest::validatePOSTContentType() {
-    // Récupérer l'en-tête Content-Type
+    // Verify the presence of 'Content-Type' header
     std::map<std::string, std::string>::iterator it = headers_.find("content-type");
     if (it == headers_.end() || it->second.empty()) {
         std::cerr << "Missing Content-Type header in POST request." << std::endl;
@@ -181,20 +171,20 @@ bool HttpRequest::validatePOSTContentType() {
         return false;
     }
 
-    // Extraire le type MIME principal (avant le point-virgule)
+    // Extract the principal MIME TYPE (localized before semicolon)
     std::string contentType = it->second;
     size_t semicolonPos = contentType.find(';');
     if (semicolonPos != std::string::npos) {
         contentType = contentType.substr(0, semicolonPos);
     }
 
-    // Supprimer les espaces inutiles et convertir en minuscules pour une comparaison insensible à la casse
+    // Normalize content type string
     contentType = trim(contentType);
     std::transform(contentType.begin(), contentType.end(), contentType.begin(), ::tolower);
 
-    // Vérifier si le Content-Type est accepté
+    // Vérify if we authorise this content type in our server
     if (contentType == "application/x-www-form-urlencoded" || contentType == "multipart/form-data") {
-        return true; // Content-Type accepté
+        return true;
     } else {
         std::cerr << "Unsupported Content-Type: " << contentType << std::endl;
         parseError_ = true;
@@ -203,23 +193,12 @@ bool HttpRequest::validatePOSTContentType() {
     }
 }
 
-// bool HttpRequest::ValidatePOSTContentLength() {
-
-//     if (contentLength_) {
-//         std::cerr << "Missing Content-Length header in POST request." << std::endl;
-//         parseError_ = true;
-//         parseErrorCode_ = 411; // Length Required
-//         return false;
-//     }
-//     return true;
-// }
-
 bool HttpRequest::parseRequestLine(const std::string& line) {
     std::istringstream lineStream(line);
     std::string method, rawPath, httpVersion;
 
-    // Limiter la taille max d' une requete
-    const size_t MAX_REQUEST_LINE_LENGTH = 100; // Limite typique (à ajuster selon les besoins)
+    // Limit the max size allowed for the request line
+    const size_t MAX_REQUEST_LINE_LENGTH = 100;
     if (line.length() > MAX_REQUEST_LINE_LENGTH) {
         std::cerr << "Request line too long: " << line << std::endl;
         parseError_ = true;
@@ -227,6 +206,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
         return false;
     }
 
+    // Error if less than 3 strings in the line
     if (!(lineStream >> method >> rawPath >> httpVersion)) {
         std::cerr << "Invalid request line: " << line << std::endl;
         parseError_ = true;
@@ -234,8 +214,8 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
         return false;
     }
 
-    // Vérifier si l'URI est trop longue
-    const size_t MAX_URI_LENGTH = 2048; // Définir la limite appropriée
+    // Limit the max size allowed for the URI
+    const size_t MAX_URI_LENGTH = 50; // We can make this limit bigger
     if (rawPath.length() > MAX_URI_LENGTH) {
         std::cerr << "URI too long: " << rawPath << std::endl;
         parseError_ = true;
@@ -255,12 +235,12 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     rawPath_ = rawPath;
     httpVersion_ = httpVersion;
 
-    // Supprimer le retour chariot de httpVersion_ s'il est présent
+    // Del \r from the HTTPver string
     if (!httpVersion_.empty() && httpVersion_[httpVersion_.size() - 1] == '\r') {
         httpVersion_.erase(httpVersion_.size() - 1);
     }
 
-    // Vérifier la version HTTP
+    // Vérify HTTP version
     if (httpVersion_ != "HTTP/1.1" && httpVersion_ != "HTTP/1.0") {
         std::cerr << "Unsupported HTTP version: " << httpVersion_ << std::endl;
         parseError_ = true;
@@ -268,7 +248,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
         return false;
     }
 
-    // Liste des méthodes reconnues
+    // List of allowed methods in HTTP/1.1
     std::set<std::string> knownMethods;
     knownMethods.insert("GET");
     knownMethods.insert("POST");
@@ -278,7 +258,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     knownMethods.insert("OPTIONS");
     knownMethods.insert("PATCH");
 
-    // Vérifier si la méthode est reconnue
+    // Detect impossible Methods
     if (knownMethods.find(method_) == knownMethods.end()) {
         std::cerr << "Unknown HTTP method: " << method_ << std::endl;
         parseError_ = true;
@@ -286,17 +266,15 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
         return false;
     }
 
-    // Vérifier si la méthode est implémentée
-    if (method_ == "GET" || method_ == "POST" || method_ == "DELETE") {
-        // Méthode implémentée
-    } else {
+    // Detect unimplemented Methods
+    if (method_ != "GET" || method_ != "POST" || method_ != "DELETE") {
         std::cerr << "Not implemented HTTP method: " << method_ << std::endl;
         parseError_ = true;
-        parseErrorCode_ = 501; // Not Implemented
+        parseErrorCode_ = 501;
         return false;
     }
 
-    // Retirer la query string du rawPath_
+    // Extract query string from rawPath
     size_t queryPos = rawPath_.find('?');
     if (queryPos != std::string::npos) {
         queryString_ = rawPath_.substr(queryPos + 1); // Stocker la query string
@@ -305,10 +283,10 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
         queryString_.clear(); // Aucune query string, on vide la variable
     }
 
-    // Normaliser le chemin
+    // Delete multiples /
     path_ = normalizePath(rawPath_);
 
-    // Vérifier que le chemin commence par '/'
+    // path have to begin with '/'
     if (path_.empty() || path_[0] != '/') {
         std::cerr << "Invalid request target: " << rawPath_ << std::endl;
         parseError_ = true;
@@ -316,7 +294,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
         return false;
     }
 
-    // Parsing réussi
+    // Successful parsing
     return true;
 }
 
@@ -342,22 +320,25 @@ std::string HttpRequest::normalizePath(const std::string& path) const {
 
 void HttpRequest::parseHeaderLine(const std::string& line) {
     size_t colonPos = line.find(':');
+    //colon is found
     if (colonPos != std::string::npos) {
+        // Extract Name and value of the header
         std::string headerName = line.substr(0, colonPos);
         std::string headerValue = line.substr(colonPos + 1);
 
-        // Supprimer les espaces inutiles
+        // Del whitespaces before Name and after Value
         headerName = trim(headerName);
         headerValue = trim(headerValue);
 
-        // Convertir le nom de l'en-tête en minuscule pour une comparaison insensible à la casse
+        // Lowering headerName
         std::transform(headerName.begin(), headerName.end(), headerName.begin(), ::tolower);
 
         headers_[headerName] = headerValue;
     } else {
+        // colon not found in the header line
         std::cerr << "Invalid header line: " << line << std::endl;
         parseError_ = true;
-        parseErrorCode_ = 400; // Bad Request
+        parseErrorCode_ = 400;
     }
 }
 
@@ -367,23 +348,6 @@ std::string HttpRequest::trim(const std::string& str) {
     size_t last = str.find_last_not_of(" \t\r\n");
     return str.substr(first, (last - first + 1));
 }
-
-// void HttpRequest::parseHeaderLine(const std::string& line) {
-//     std::string::size_type pos = line.find(':');
-//     if (pos != std::string::npos) {
-//         std::string headerName = line.substr(0, pos);
-//         std::string headerValue = line.substr(pos + 1);
-
-//         // Supprimer les espaces
-//         headerName.erase(headerName.find_last_not_of(" \t\r\n") + 1);
-//         headerValue.erase(0, headerValue.find_first_not_of(" \t\r\n"));
-//         headerValue.erase(headerValue.find_last_not_of(" \t\r\n") + 1);
-
-//         headers_[headerName] = headerValue;
-
-//         // std::cout << "HttpRequest::parseRequestLine  : Parsed header: " << headerName << " = '" << headerValue << "'"  << std::endl;//test
-//     }
-// }
 
 const std::string& HttpRequest::getMethod() const {
     return method_;
@@ -410,7 +374,6 @@ std::string HttpRequest::getHeader(const std::string& headerName) const {
 }
 
 const std::string& HttpRequest::getBody() const {
-    // std::cout << GREEN <<"HttpRequest::getBody()  " << body_ << RESET << std::endl;//test
     return body_;
 }
 
@@ -437,12 +400,15 @@ void HttpRequest::displayContent() const
 }
 
 void HttpRequest::reset() {
+    rawData_.clear();
     method_.clear();
+    rawPath_.clear();
     path_.clear();
+    queryString_.clear();
     httpVersion_.clear();
     body_.clear();
-    rawData_.clear();
     contentLength_ = 0;
+    bodyStartPos_ = 0;
     headersParsed_ = false;
     state_ = REQUEST_LINE;
     headers_.clear();

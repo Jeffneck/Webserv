@@ -120,9 +120,8 @@ void WebServer::runEventLoop() {
                 // Socket client
                 DataSocket* dataSocket = pollDataSockets[i];
                 if (pollfds[i].revents & POLLIN) {
-                    std::cout << "DATASOCKET POLLIN" << std::endl;
+                    std::cout << GREEN <<"DATASOCKET POLLIN" << RESET << std::endl;
                     if (!dataSocket->receiveData()) {
-                        std::cout << "POLLIN Datasocket close" << std::endl;
                         dataSocket->closeSocket();
                     } else if (dataSocket->isRequestComplete()) {
                         dataSocket->processRequest();
@@ -131,29 +130,33 @@ void WebServer::runEventLoop() {
                         }
                     }
                 }if (pollfds[i].revents & POLLOUT) {
-                    // std::cout << "DATASOCKET POLLOUT" << std::endl;
+                    std::cout << GREEN <<"DATASOCKET POLLOUT" << RESET << std::endl;
                     if (dataSocket->hasDataToSend()) {
                         if (!dataSocket->sendData()) {
                             dataSocket->closeSocket();
                         }
                     }
                 }if (pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
-                    std::cout << "POLLHUP.. Datasocket close" << std::endl;
+                    std::cout << GREEN <<"DATASOCKET POLLHUP POLLERR POLLNVAL" << RESET << std::endl;
                     dataSocket->closeSocket();
                 }
 
-            } else if (pollFdTypes[i] == 2) {
-                // Pipe CGI
+            } 
+            // Pipe CGI
+            else if (pollFdTypes[i] == 2) {
                 DataSocket* dataSocket = pollDataSockets[i];
+                //Data sent by CGI
                 if (pollfds[i].revents & POLLIN) {
                     std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;//test
-                    dataSocket->readFromCgiPipe(); //metre un close si eof ici
+                    dataSocket->readFromCgiPipe();
                 }
+                //EOF sent by CGI
                 else if (pollfds[i].revents & (POLLHUP)) {
                     std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;//test
                     dataSocket->readFromCgiPipe();
                     dataSocket->closeCgiPipe();
-                }else if (pollfds[i].revents & (POLLERR | POLLNVAL)) {
+                }
+                else if (pollfds[i].revents & (POLLERR | POLLNVAL)) {
                     std::cout<< GREEN << "CGI POLLERR EVENT"<< RESET <<std::endl;//test
                     dataSocket->closeCgiPipe();
                 }
