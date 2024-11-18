@@ -47,7 +47,7 @@ HttpResponse handleError(int statusCode, const std::string &errorPagePath)
 
     // Définir les en-têtes HTTP appropriés
     response.setHeader("Content-Type", "text/html; charset=UTF-8");
-    // response.setHeader("Connection", "close");
+    response.setHeader("Connection", "close");
 
     return response;
 }

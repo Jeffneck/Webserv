@@ -434,7 +434,7 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         std::string contentType = getMimeType(extension);
         if (!contentType.empty()) {
             response.setHeader("Content-Type", contentType);
-            // response.setHeader("Connection", "close");
+            response.setHeader("Connection", "close");
         }
     }
 
@@ -600,7 +600,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     response.setStatusCode(204);
     response.setBody("File deleted successfully.");
     response.setHeader("Content-Type", "text/plain; charset=UTF-8");
-    // response.setHeader("Connection", "close");
+    response.setHeader("Connection", "close");
 
     return response;
 }
@@ -635,7 +635,7 @@ HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, cons
     response.setStatusCode(200);
     response.setBody(ss.str());
     response.setHeader("Content-Type", "text/html; charset=UTF-8");
-    // response.setHeader("Connection", "close");
+    response.setHeader("Connection", "close");
 
     return response; 
 }
