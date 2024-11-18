@@ -6,7 +6,7 @@
 
 Server::Server(const Config &config)
     : config_(config), clientMaxBodySizeIsSet_(false), rootIsSet_(false), indexIsSet_(false),
-      host_(INADDR_ANY), port_(htons(8080)) // Valeurs par défaut
+      host_(INADDR_ANY), port_(htons(0))
 {
 }
 

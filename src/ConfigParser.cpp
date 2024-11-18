@@ -587,6 +587,9 @@ void ConfigParser::checkConfigValidity() const
     {
         if(servers[i]->getRoot() == "")
             throw (ParsingException("An error occured while charging configuration file :\n at least one server have no root directory"));
+        //attention si listen 0.0.0.0 = erreur throw
+        if(servers[i]->getPort() == 0 )
+            throw (ParsingException("An error occured while charging configuration file :\n at least one server dont have a valid IP:PORT to listen"));
     }
 }
 

@@ -1,4 +1,4 @@
-ajouter le contenu de listen aux servernames 127.0.0.1:8080
+Dans le checker de parsing il faut verifier qu' il y a au moins 1 serveur et qu' il a une directive listen et root
 
 televerser des files est bloquant
 

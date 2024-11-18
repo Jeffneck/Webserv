@@ -117,6 +117,16 @@ void RequestHandler::process(const Server* server, const Location* location, con
         allowedMethods.push_back("DELETE");
     }
 
+    // Vérifier si la méthode est autorisée
+    std::vector<std::string>::iterator it = std::find(allowedMethods.begin(), allowedMethods.end(), request.getMethod());
+    if (it == allowedMethods.end()) {
+        // Si la méthode n'est pas trouvée, on renvoie une erreur 405
+        result.response = handleError(405, getErrorPageFullPath(405, location, server));
+        result.response.setHeader("Allow", join(allowedMethods, ", "));
+        result.responseReady = true;
+        return;
+    }
+
     // Vérification que Content-Length n'est pas supérieure à client_max_body_size et retour d'erreur HTTP approprié
     std::string contentLengthStr = request.getHeader("content-length");
     if (!contentLengthStr.empty()) {

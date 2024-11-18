@@ -267,7 +267,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     }
 
     // Detect unimplemented Methods
-    if (method_ != "GET" || method_ != "POST" || method_ != "DELETE") {
+    if (method_ != "GET" && method_ != "POST" && method_ != "DELETE") {
         std::cerr << "Not implemented HTTP method: " << method_ << std::endl;
         parseError_ = true;
         parseErrorCode_ = 501;

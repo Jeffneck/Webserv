@@ -26,14 +26,12 @@ Tester avec différentes méthodes HTTP :
 GET :
 curl -X GET http://127.0.0.1:8080
 
-GET INTERDIT : 
-curl -X GET http://127.0.0.1:8080/secretFolder/secretFile.txt
+
 
 POST :
-
 curl -X POST 127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Type: application/x-www-form-urlencoded" -d "name=testname&email=testemail&message=testmessage"
 
-PUT :
+PUT : (fonctionnalite non implementee)
 curl -X PUT http://127.0.0.1:8080 -d 'key=value'
 
 DELETE :
@@ -129,7 +127,7 @@ Méthode HTTP non supportée : Le client utilise une méthode HTTP (comme PUT, D
 curl -v -X TRACE http://127.0.0.1:8080/
 
 Restriction sur les méthodes : Le serveur est configuré pour n'accepter que certaines méthodes pour une ressource donnée. Par exemple, une page qui n'accepte que GET et HEAD, et le client envoie une requête POST.
-curl -v -X DELETE http://127.0.0.1:8080/index.html
+curl -v -X GET http://127.0.0.1:8080/secretFolder/secretFile.txt
 
 6. 408 Request Timeout (408 - Délai d'attente dépassé)
 Situations possibles :

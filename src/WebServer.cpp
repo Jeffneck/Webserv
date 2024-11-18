@@ -130,7 +130,7 @@ void WebServer::runEventLoop() {
                         }
                     }
                 }if (pollfds[i].revents & POLLOUT) {
-                    std::cout << GREEN <<"DATASOCKET POLLOUT" << RESET << std::endl;
+                    // std::cout << GREEN <<"DATASOCKET POLLOUT" << RESET << std::endl;
                     if (dataSocket->hasDataToSend()) {
                         if (!dataSocket->sendData()) {
                             dataSocket->closeSocket();
