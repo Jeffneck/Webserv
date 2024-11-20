@@ -183,8 +183,8 @@ bool DataSocket::isCgiComplete() const {
     return cgiComplete_;
 }
 
-void DataSocket::readFromCgiPipe() {
-    std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl; // Debug
+bool DataSocket::readFromCgiPipe() {
+    // std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl; // Debug
     
     char buffer[4096];
     ssize_t bytesRead = read(cgiPipeFd_, buffer, sizeof(buffer));
@@ -193,49 +193,44 @@ void DataSocket::readFromCgiPipe() {
         lastActivityTime_ = time(NULL);
         cgiOutputBuffer_.append(buffer, bytesRead);
         std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
+        return true;
     } else if (bytesRead == 0) {
-        //mettre le contenu de ce block dans une fonction
         handleCgiProcessExitStatus();
-        
-        // EOF atteint, le processus CGI a terminé
-        // std::cerr << "CGI PIPE CLOSED BY EOF" << std::endl;
-        // closeCgiPipe();
+        return false;
     }else{
-        std::cerr << "an error occured while reading on cgi Pipe" << std::endl;
+        std::cerr << "Error occured while reading on cgi Pipe" << std::endl;
         terminateCgiProcess();
+        return false;
     }
 }
 
 void    DataSocket::handleCgiProcessExitStatus()
 {
-    if(cgiProcess_ && cgiProcess_->getExitStatus()){
-        // Vérifier le statut de sortie du CGI
-        int status = cgiProcess_->getExitStatus();
-        std::cout << "cgi status : "<<status<<std::endl;//debug
+    std::cout << YELLOW<< "DataSocket::handleCgiProcessExitStatus"<< RESET << std::endl;//debug
+    int status = cgiProcess_->getExitStatus();
+    if(cgiProcess_ && status){
+        // Vérify exit status
         if (WIFEXITED(status)) {
             int exitStatus = WEXITSTATUS(status);
             if (exitStatus != 0) {
-                // CGI a échoué, renvoyer une erreur 502
                 std::cerr << "CGI process exited with error code: " << exitStatus << std::endl;
                 HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
                 sendBuffer_ = response.generateResponse();
                 sendBufferOffset_ = 0;
             } 
         } else if (WIFSIGNALED(status)) {
-            // CGI s'est terminé suite à un signal, par exemple SIGSEGV
             std::cerr << "CGI process was terminated by a signal." << std::endl;
             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
         } else {
-            // Autres types de terminaisons
             std::cerr << "CGI process terminated abnormally." << std::endl;
             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
         }
     } else {
-        // CGI a réussi, envoyer la réponse
+        // CGI ended successfully
         HttpResponse response;
         response.setStatusCode(200);
         response.setBody(cgiOutputBuffer_);

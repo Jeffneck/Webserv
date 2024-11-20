@@ -9,7 +9,6 @@ Config::Config()
 
 Config::~Config()
 {
-    // Supprimer les objets Server alloués dynamiquement
     for (size_t i = 0; i < servers_.size(); ++i)
     {
         delete servers_[i];
@@ -81,14 +80,13 @@ const std::vector<Server*>& Config::getServers() const
     return servers_;
 }
 
-// DEBUG
+// Debug function
 void Config::displayConfig() const
 {
     std::cout << GREEN;
     std::cout << "Root global: " << this->getRoot() << std::endl;
     std::cout << "client_max_body_size global: " << this->getClientMaxBodySize() << std::endl;
 
-    // Affichage des pages d'erreur globales
     const std::map<int, std::string> &globalErrorPages = this->getErrorPages();
     for (std::map<int, std::string>::const_iterator it = globalErrorPages.begin(); it != globalErrorPages.end(); ++it)
     {

@@ -92,7 +92,6 @@ void WebServer::setupPollfds(std::vector<struct pollfd> &pollfds,
 }
 
 void WebServer::runEventLoop() {
-    std::cout << "Info : Webserver is now running" << std::endl;
     while (g_running) {
         //Pollfds stores all fds we want to keep an eye on : it is used to monitor events in multiplexing IO (non-blocking state)
         std::vector<struct pollfd> pollfds;
@@ -110,10 +109,10 @@ void WebServer::runEventLoop() {
         // Monitor Multiplexing I/O phase
         //      poll detect events and add flags to pollfds[i].revents
         //      if a flag is detected for a fd / or poll timeout :  Multiplexing I/O phase ends
+        //      ret < 0 : Fatal Error or SIGINT
         int timeout = 2000;
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
         if (ret < 0) {
-            std::cerr << "Fatal Error : poll malfunction"<< std::endl;
             cleanUp();
             return;
         }
@@ -123,9 +122,10 @@ void WebServer::runEventLoop() {
         for (i = 0; i < pollfds.size(); ++i) {
             if (pollfds[i].revents == 0)
                 continue;
-            // Listening Sockets ///////////////
+            // Listening Sockets
             if (pollFdTypes[i] == 0) {
                 if (pollfds[i].revents & POLLIN) {
+                    // std::cout << GREEN <<"LISTENINGSOCKET POLLIN" << RESET << std::endl;
                     ListeningSocket* listeningSocket = pollListeningSockets[i];
                     int new_fd = listeningSocket->acceptConnection();
                     if (new_fd >= 0) {
@@ -133,11 +133,13 @@ void WebServer::runEventLoop() {
                         dataHandler_.addClientSocket(newDataSocket);
                     }
                 }
-            } else if (pollFdTypes[i] == 1) {
-                // Socket client
+            } 
+            
+            // Data Sockets
+            else if (pollFdTypes[i] == 1) {
                 DataSocket* dataSocket = pollDataSockets[i];
                 if (pollfds[i].revents & POLLIN) {
-                    // std::cout << GREEN <<"DATASOCKET POLLIN" << RESET << std::endl;
+                    // std::cout << GREEN <<"DATASOCKET POLLIN fd :" << pollfds[i].fd << RESET << std::endl;
                     if (!dataSocket->receiveData()) {
                         dataSocket->closeSocket();
                     } else if (dataSocket->isRequestComplete()) {
@@ -159,7 +161,9 @@ void WebServer::runEventLoop() {
                 }
 
             } 
-            // Pipe CGI
+
+            // Pipes CGI 
+            //      fd stored in poll = pipe / Datasocket that contains this fd = pollDataSockets[i]
             else if (pollFdTypes[i] == 2) {
                 DataSocket* dataSocket = pollDataSockets[i];
                 //Data sent by CGI
@@ -180,11 +184,12 @@ void WebServer::runEventLoop() {
             }
         }
 
-        //Events after each multiplexing session
+        //Events triggered after each multiplexing session
         checkCgiTimeouts();
         checkDataSocketTimeouts();
         dataHandler_.removeClosedSockets();
     }
+    //Events triggered afet a fatal error / or SIGINT 
     std::cout << "Info : Webserver had been shut down" << std::endl;
     cleanUp();
 }

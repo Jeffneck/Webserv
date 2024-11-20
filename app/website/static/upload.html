@@ -136,7 +136,7 @@
 <body>
     <!-- Barre de Navigation -->
     <nav>
-        <a href="/cgi-bin/uploads/">Autoindex des Téléversements</a>
+        <a href="/uploads/">Autoindex des Téléversements</a>
         <a href="/static/upload.html">Téléverser</a>
         <a href="/static/delete.html">Supprimer</a>
     </nav>
@@ -168,7 +168,7 @@
             const form = document.getElementById('uploadForm');
             const formData = new FormData(form);
 
-            fetch('/cgi-bin/uploads/', {
+            fetch('/uploads/', {
                 method: 'POST',
                 body: formData
             })

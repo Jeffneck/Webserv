@@ -31,7 +31,7 @@ public:
     bool hasCgiProcess() const;
     int getCgiPipeFd() const;
     bool isCgiComplete() const;
-    void readFromCgiPipe();
+    bool readFromCgiPipe();
     void handleCgiProcessExitStatus();
     void closeCgiPipe();
 

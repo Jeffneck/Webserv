@@ -198,11 +198,10 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     std::string method, rawPath, httpVersion;
 
     // Limit the max size allowed for the request line
-    const size_t MAX_REQUEST_LINE_LENGTH = 100;
     if (line.length() > MAX_REQUEST_LINE_LENGTH) {
         std::cerr << "Request line too long: " << line << std::endl;
         parseError_ = true;
-        parseErrorCode_ = 414; // URI Too Long
+        parseErrorCode_ = 400; // Bad Request
         return false;
     }
 
@@ -215,7 +214,6 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     }
 
     // Limit the max size allowed for the URI
-    const size_t MAX_URI_LENGTH = 50; // We can make this limit bigger
     if (rawPath.length() > MAX_URI_LENGTH) {
         std::cerr << "URI too long: " << rawPath << std::endl;
         parseError_ = true;

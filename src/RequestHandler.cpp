@@ -11,8 +11,8 @@
 #include "../includes/Utils.hpp"
 #include "../includes/Error.hpp"
 #include "../includes/Color_Macros.hpp"
-#include <cerrno> // Pour errno
-#include <string.h> // Pour errno
+#include <cerrno>
+#include <string.h>
 
 
 RequestHandler::RequestHandler(const Config& config, const std::vector<Server*>& associatedServers)
@@ -43,36 +43,33 @@ const Server* RequestHandler::selectServer(const HttpRequest& request) const {
     std::string hostHeader = request.getHeader("host");
     if (hostHeader.empty()) {
         std::cerr << "No Host header found in the request." << std::endl;
-        return NULL; // Retourner NULL pour indiquer une erreur
+        return NULL; // Error managed after
     }
 
-    // Parcourir tous les serveurs pour trouver une correspondance
+    // find the good server in associatedServers_
     for (size_t i = 0; i < associatedServers_.size(); ++i) {
         const std::vector<std::string>& serverNames = associatedServers_[i]->getServerNames();
         if (std::find(serverNames.begin(), serverNames.end(), hostHeader) != serverNames.end()) {
-            std::cerr << "RequestHandler::selectServer   : Server found by name => first name of server : " << associatedServers_[i]->getServerNames()[0] << " ip:port : "<< associatedServers_[i]->getHost() << ":"<< associatedServers_[i]->getPort() << std::endl; //test
+            // std::cout << "RequestHandler::selectServer   : Server found by name => first name of server : " << associatedServers_[i]->getServerNames()[0] << " ip:port : "<< associatedServers_[i]->getHost() << ":"<< associatedServers_[i]->getPort() << std::endl; //test
             return associatedServers_[i];
         }
     }
 
-    // Si aucun serveur ne correspond, utiliser le premier serveur comme défaut
+    // first server is default
     if (!associatedServers_.empty()) {
-        std::cerr << "RequestHandler::selectServer   : Default server Used => first name of server : " << associatedServers_[0]->getServerNames()[0] << " ip:port : "<< associatedServers_[0]->getHost() << ":"<< associatedServers_[0]->getPort() << std::endl;//test
-
+        // std::cerr << "RequestHandler::selectServer   : Default server Used => first name of server : " << associatedServers_[0]->getServerNames()[0] << " ip:port : "<< associatedServers_[0]->getHost() << ":"<< associatedServers_[0]->getPort() << std::endl;//test
         return associatedServers_[0];
     }
 
-    std::cerr << "RequestHandler::selectServer   : No server found. Default server must exist." << std::endl;//test
-    // Aucun serveur configuré
-    return NULL;
+    // std::cerr << "RequestHandler::selectServer   : No server found. Default server must exist." << std::endl;//test
+    // No server in .conf
+    return NULL;// Error managed after
 }
 
 const Location* RequestHandler::selectLocation(const Server* server, const HttpRequest& request) const {
-    // Vérifier si le serveur est NULL
     if (!server) {
         return NULL;
     }
-
     std::string requestPath = request.getPath();
     const std::vector<Location>& locations = server->getLocations();
 
@@ -87,73 +84,73 @@ const Location* RequestHandler::selectLocation(const Server* server, const HttpR
         }
     }
 
-    if (matchedLocation)
-        std::cout << "Request Path: " << requestPath << " Matched location: " << matchedLocation->getPath() << std::endl; //test
-    return matchedLocation;
+    // if (matchedLocation)
+    //     std::cout << "Request Path: " << requestPath << " Matched location: " << matchedLocation->getPath() << std::endl; //test
+    return matchedLocation; // NULL is not an error here
 }
 
 void RequestHandler::process(const Server* server, const Location* location, const HttpRequest& request, RequestResult& result) const {
-    // Vérifier si le serveur est NULL
+    // Error if Server has not been found
     if (!server) {
         result.response = handleError(400, config_.getErrorPageFullPath(400));
         result.responseReady = true;
         return;
     }
 
-    // Collecte des méthodes autorisées
+    // Extract allowed method in the current context (location > Server)
     std::vector<std::string> allowedMethods;
     if (location && !location->getAllowedMethods().empty()) {
-        std::cout << "Using allowed methods found in location" << std::endl;
+        // std::cout << "Using allowed methods found in location" << std::endl;
         allowedMethods = location->getAllowedMethods();
+        //DENY in .conf stands for : No method allowed here
         if(allowedMethods[0] == "DENY"){
             result.response = handleError(405, getErrorPageFullPath(405, location, server));
             result.responseReady = true;
             return;
         }
     } else {
-        std::cout << "Using default allowed methods GET POST DELETE" << std::endl;
+        // std::cout << "Using default allowed methods GET POST DELETE" << std::endl;
         allowedMethods.push_back("GET");
         allowedMethods.push_back("POST");
         allowedMethods.push_back("DELETE");
     }
 
-    // Vérifier si la méthode est autorisée
+    // Verify if the extracted Method is allowed
     std::vector<std::string>::iterator it = std::find(allowedMethods.begin(), allowedMethods.end(), request.getMethod());
     if (it == allowedMethods.end()) {
-        // Si la méthode n'est pas trouvée, on renvoie une erreur 405
         result.response = handleError(405, getErrorPageFullPath(405, location, server));
         result.response.setHeader("Allow", join(allowedMethods, ", "));
         result.responseReady = true;
         return;
     }
 
-    // Vérification que Content-Length n'est pas supérieure à client_max_body_size et retour d'erreur HTTP approprié
+    //  Check that Content-Length is not greater than client_max_body_size
     std::string contentLengthStr = request.getHeader("content-length");
     if (!contentLengthStr.empty()) {
-        // Convertir Content-Length en size_t
+        // Content-Length str to size_t
         char* endptr;
         errno = 0;
         unsigned long contentLength = strtoul(contentLengthStr.c_str(), &endptr, 10);
         if (*endptr != '\0' || errno != 0) {
-            // En-tête Content-Length invalide
+            // Invalid Content Length
             result.response = handleError(400, getErrorPageFullPath(400, location, server));
             result.responseReady = true;
             return;
         }
 
-        // Obtenir client_max_body_size depuis location ou server
+        // Extract client max body size in the current context (location > Server)
         size_t clientMaxBodySize = 0;
         if (location && location->getClientMaxBodySize() > 0) {
             clientMaxBodySize = location->getClientMaxBodySize();
         } else if (server->getClientMaxBodySize() > 0) {
             clientMaxBodySize = server->getClientMaxBodySize();
         } else {
-            // Valeur par défaut si non spécifiée
-            clientMaxBodySize = 0; // 0 signifie pas de limite
+            // Default value
+            clientMaxBodySize = 0; // 0 stands for 'no limit'
         }
 
         if (clientMaxBodySize > 0 && contentLength > clientMaxBodySize) {
-            std::cout << YELLOW << "client max body size "<<clientMaxBodySize << " vs content length " << contentLength << RESET << std::endl;//test
+            // std::cout << YELLOW << "client max body size "<<clientMaxBodySize << " vs content length " << contentLength << RESET << std::endl;//test
             result.response = handleError(413, getErrorPageFullPath(413, location, server));
             result.responseReady = true;
             return;
@@ -170,7 +167,7 @@ void RequestHandler::process(const Server* server, const Location* location, con
         return;
     }
 
-    // Gestion des CGI
+    // Handle CGI
     if (location && !location->getCgiExtension().empty() && location->getCGIEnable() && endsWith(request.getPath(), location->getCgiExtension())) {
         CgiProcess* cgiProcess = startCgiProcess(server, location, request);
         if (cgiProcess) {
@@ -184,28 +181,28 @@ void RequestHandler::process(const Server* server, const Location* location, con
         }
     }
 
-    // Gestion des fichiers statiques
+    // Handle static files
     if (request.getMethod() == "GET") {
         result.response = serveStaticFile(server, location, request);
         result.responseReady = true;
         return;
     }
 
-    // Gestion de l'upload de fichiers
+    // Handle file upload
     if (request.getMethod() == "POST" && location && location->getUploadEnable()) {
         result.response = handleFileUpload(request, location, server);
         result.responseReady = true;
         return;
     }
 
-    // Gestion des delete de fichiers
+    // Handle Deleting files
     if (request.getMethod() == "DELETE" && location) {
         result.response = handleDeletion(request, location, server);
         result.responseReady = true;
         return;
     }
 
-    // Si aucune condition précédente n'est satisfaite, retourner une erreur 405
+    // Method not allowed if we're here
     result.response = handleError(405, getErrorPageFullPath(405, location, server));
     result.response.setHeader("Allow", join(allowedMethods, ", "));
     result.responseReady = true;
@@ -215,9 +212,10 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
     char cwd[PATH_MAX];
 
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        std::cerr << RED <<"RequestHandler::startCgiProcess : Error getcwd: " << strerror(errno) << RESET << std::endl;
-        return NULL; // Retourner NULL pour indiquer une erreur
+        // std::cerr << RED <<"RequestHandler::startCgiProcess : Error getcwd: " << strerror(errno) << RESET << std::endl;
+        return NULL; // NULL = Error
     }
+    //construct path
     std::string scriptWorkingDir = cwd ;
     scriptWorkingDir += "/" ;
     scriptWorkingDir += server->getRoot();
@@ -234,28 +232,25 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
 
     std::map<std::string, std::string> params;
     if (request.getMethod() == "GET") {
-        // Extraire les paramètres de la query string
+        // Extract params from query string
         params = createScriptParamsGET(request.getQueryString());
     } else if (request.getMethod() == "POST") {
         std::string contentType = request.getHeader("content-type");
         if (contentType == "application/x-www-form-urlencoded") {
-            // Extraire les paramètres du corps de la requête
+            // Extract params fro the body of the HTTP request
             params = createScriptParamsPOST(request.getBody());
         } else {
-            // Gérer d'autres types de contenu ou renvoyer une erreur
-            std::cerr << "Type de contenu non pris en charge pour POST: " << contentType << std::endl;
+            std::cerr << "Content Type allowed to POST Forms is 'application/x-www-form-urlencoded'" << contentType << std::endl;
             return NULL;
         }
     } else {
-        // Méthode non prise en charge
-        std::cerr << "Méthode HTTP non prise en charge: " << request.getMethod() << std::endl;
+        std::cerr << "HTTP Method not allowed" << request.getMethod() << std::endl;
         return NULL;
     }
 
     std::vector<std::string> envVars;
     setupScriptEnvp(request, relativeFilePath, envVars);
 
-    // Créer l'objet CgiProcess avec les paramètres
     CgiProcess* cgiProcess = new CgiProcess(scriptWorkingDir, relativeFilePath, params, envVars);
     if (!cgiProcess->start()) {
         delete cgiProcess;
@@ -271,8 +266,6 @@ void RequestHandler::setupScriptEnvp(const HttpRequest& request, const std::stri
     envVars.push_back("SCRIPT_FILENAME=" + relativeFilePath);
     envVars.push_back("CONTENT_TYPE=" + request.getHeader("content-Type"));
     envVars.push_back("CONTENT_LENGTH=" + request.getHeader("content-Length"));
-    // envVars.push_back("QUERY_STRING=" + request.getQueryString());//inutile puisque deja envoyees dans les arguments
-    
 }
 
 
@@ -348,7 +341,7 @@ std::map<std::string, std::string> RequestHandler::createScriptParamsPOST(const 
 HttpResponse RequestHandler::serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const {
     HttpResponse response;
 
-    // Déterminer le répertoire racine et le fichier index
+    // Determine root directory and index file
     std::string root = server->getRoot();
     std::string index = server->getIndex();
 
@@ -357,25 +350,24 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         index = location->getIndex();
     }
 
-    // Construire le chemin complet du fichier demandé
+    // Build the full path to the requested file
     std::string requestPath = request.getPath();
 
-    // Vérifier que requestPath n'est pas vide
+    // Check that requestPath is not empty
     if (requestPath.empty()) {
         requestPath = "/";
     }
 
-    // Gérer le cas où le chemin se termine par un '/'
+    // Handle the case where the path ends with a '/'.
     if (requestPath[requestPath.size() - 1] == '/') {
         if (location && !location->getIndexIsSet() && location->getAutoIndex()) {
-            // Générer l'auto-index si l'index n'est pas défini et que l'auto-index est activé
+            // Generate auto-index if index is not defined and auto-index is enabled
             return generateAutoIndex(root + requestPath, requestPath);
         }
-        // Ajouter le fichier index au chemin
         requestPath += index;
     }
 
-    // Retirer le chemin de la location du requestPath si root est défini dans la location
+    // Remove the location path from the requestPath if root is defined in the location
     if (location && location->getRootIsSet()) {
         std::string to_remove = location->getPath();
         size_t pos = requestPath.find(to_remove);
@@ -384,16 +376,16 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         }
     }
 
-    // Construire le chemin complet vers le fichier
+    // Build complete path to file
     std::string fullPath = root + requestPath;
     std::cout << "Serving file: " << fullPath << std::endl;
 
-    // Vérifier la sécurité du chemin
+    // Check path safety
     if (!isPathSecure(root, fullPath)) {
         return handleError(403, getErrorPageFullPath(403, location, server));
     }
 
-    // Vérifier si le fichier existe et est accessible
+    // Check that the file exists and is accessible
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
         if (errno == EACCES) {
@@ -405,19 +397,12 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         }
     }
 
-    // Vérifier que c'est un fichier régulier
+    // Check that it's a regular file
     if (!S_ISREG(fileStat.st_mode)) {
         return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
     }
 
-    //  // Vérifier la taille du fichier (10Mo max)
-    // const size_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
-    // if (static_cast<size_t>(fileStat.st_size) > MAX_FILE_SIZE) {
-    //     std::cerr << "File size exceeds maximum allowed size of 10 MB: " << fileStat.st_size << " bytes" << std::endl;
-    //     return handleError(501, getErrorPageFullPath(501, location, server)); // Not Implemented
-    // }
-
-    // Ouvrir le fichier demandé
+    // Open the file
     std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open()) {
         if (errno == EACCES) {
@@ -427,7 +412,7 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         }
     }
 
-    // Lire le contenu du fichier
+    // Read content
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string fileContent = buffer.str();

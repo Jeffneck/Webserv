@@ -5,10 +5,10 @@ FROM nginx:latest
 RUN apt-get update && apt-get install -y fcgiwrap spawn-fcgi
 
 # Copier le fichier de configuration NGINX
-COPY SimpleWebsite.conf /etc/nginx/nginx.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copier les fichiers du site web, y compris les scripts CGI
-COPY SimpleWebsite /usr/share/nginx/html
+COPY www /usr/share/nginx/html
 
 # Donner les bonnes permissions pour exécuter les scripts CGI
 RUN chmod +x /usr/share/nginx/html/cgi-bin/*

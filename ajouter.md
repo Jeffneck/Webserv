@@ -1,3 +1,9 @@
+Retour d' erreur du cgi pas recup
+
+lorsque de nombreux serveurs, on dirait que getRoot n' est pas pris en compte
+
+verif les .py dans autre chose que la bonne location
+
 Dans le checker de parsing il faut verifier qu' il y a au moins 1 serveur et qu' il a une directive listen et root
 
 televerser des files est bloquant

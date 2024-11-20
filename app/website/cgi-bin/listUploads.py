@@ -8,7 +8,7 @@ import mimetypes
 cgitb.enable()
 
 # Dossier contenant les fichiers multimédias
-dir_path = 'uploads/'
+dir_path = '../uploads/'
 
 try:
     # Récupérer tous les fichiers du dossier

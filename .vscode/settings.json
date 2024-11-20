@@ -52,6 +52,8 @@
         "typeinfo": "cpp",
         "csignal": "cpp",
         "set": "cpp",
-        "ctime": "cpp"
+        "ctime": "cpp",
+        "ranges": "cpp",
+        "span": "cpp"
     }
 }

@@ -91,7 +91,7 @@
 </head>
 <body>
     <nav>
-        <a href="/cgi-bin/uploads/">Autoindex des Téléversements</a>
+        <a href="/uploads/">Autoindex des Téléversements</a>
         <a href="/static/upload.html">Téléverser</a>
         <a href="/static/delete.html">Supprimer</a>
     </nav>
@@ -127,7 +127,7 @@
             }
 
             // Envoyer la requête DELETE au serveur
-            fetch('/cgi-bin/uploads/' + encodeURIComponent(filename), {
+            fetch('/uploads/' + encodeURIComponent(filename), {
                 method: 'DELETE'
             })
             .then(function(response) {

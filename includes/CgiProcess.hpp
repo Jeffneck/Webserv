@@ -18,7 +18,7 @@ public:
     bool start();
     bool isRunning();
     int getPipeFd() const;
-    int getExitStatus() const;
+    int getExitStatus();
     // std::string readOutput();
 
     bool hasTimedOut() const;

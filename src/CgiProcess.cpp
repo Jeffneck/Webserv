@@ -27,55 +27,50 @@ CgiProcess::~CgiProcess() {
     cleanupEnvp();
     if (pipefd_[0] != -1) close(pipefd_[0]);
     if (pipefd_[1] != -1) close(pipefd_[1]);
-    if (pid_ > 0) waitpid(pid_, NULL, WNOHANG);
+    if (pid_ > 0) waitpid(pid_, &cgiExitStatus_, WNOHANG);
+    std::cout << "Waitpid destruct"<< cgiExitStatus_ << std::endl;
 }
 
 bool CgiProcess::start() {
-    std::cout << "CgiProcess::start : path absolu repertoire : " << scriptWorkingDir_ << " path relatif fichier : " << relativeFilePath_ << std::endl;
+    // std::cout << "CgiProcess::start : path absolu repertoire : " << scriptWorkingDir_ << " path relatif fichier : " << relativeFilePath_ << std::endl;
 
     if (pipe(pipefd_) == -1) {
-        std::cerr << "pipe failed: " << strerror(errno) << std::endl;
+        std::cerr << "Error : CGI pipe failed: " << strerror(errno) << std::endl;
         return false;
     }
 
     // Rendre le descripteur de lecture non bloquant
     if (fcntl(pipefd_[0], F_SETFL, O_NONBLOCK) == -1) {
-        std::cerr << "fcntl failed: " << strerror(errno) << std::endl;
+        std::cerr << "Error : CGI fcntl pipe failed: " << strerror(errno) << std::endl;
         return false;
     }
 
     pid_ = fork();
     if (pid_ == -1) {
-        std::cerr << "fork failed: " << strerror(errno) << std::endl;
+        std::cerr << "Error : CGI fork failed: " << strerror(errno) << std::endl;
         return false;
     }
 
     if (pid_ == 0) {
         // Processus enfant
-
-        // Fermer le descripteur de lecture inutilisé
         close(pipefd_[0]);
-
-        // Rediriger la sortie standard vers le descripteur d'écriture du pipe
         dup2(pipefd_[1], STDOUT_FILENO);
         close(pipefd_[1]);
 
-        // Changer le répertoire de travail vers 'scriptWorkingDir_'
+        // change working dir to 'scriptWorkingDir_'
         if (chdir(scriptWorkingDir_.c_str()) == -1) {
-            std::cerr << "chdir failed: " << strerror(errno) << std::endl;
+            std::cerr << "Error : CGI chdir failed: " << strerror(errno) << std::endl;
             _exit(1);
         }
 
-        // Exécuter le script Python avec les arguments et l'environnement
-        std::cerr << CYAN << "before execve from child" << RESET << std::endl;
-
+        // Exec script with python and args
         if (execve(args_[0], &args_[0], &envp_[0]) == -1) {
-            std::cerr << "execve failed: " << strerror(errno) << std::endl;
+            std::cerr << "Error : CGI execve failed: " << strerror(errno) << std::endl;
             _exit(1);
         }
     }
 
-    // Processus parent
+    // Parent process
 
     // Fermer le descripteur d'écriture inutilisé
     close(pipefd_[1]);
@@ -91,19 +86,21 @@ bool CgiProcess::hasTimedOut() const {
 void CgiProcess::terminate() {
     if (pid_ > 0) {
         kill(pid_, SIGKILL);
-        waitpid(pid_, NULL, 0); // Éviter les processus zombies
+        waitpid(pid_, &cgiExitStatus_, 0); // Éviter les processus zombies
+        std::cout << "Waitpid terminate"<< cgiExitStatus_ << std::endl;
         pid_ = -1;
     }
 } 
 
 bool CgiProcess::isRunning() {
     pid_t result = waitpid(pid_, &cgiExitStatus_, WNOHANG);
+    std::cout << "Waitpid running" << cgiExitStatus_<< std::endl;
     if (result == 0) {
-        // Le processus est toujours en cours d'exécution
+        // process still executing
         return true;
     } else {
-        // Le processus est terminé
-        pid_ = -1; // Mettre à jour pid_ pour indiquer que le processus n'est plus actif
+        // process ended
+        pid_ = -1;
         return false;
     }
 }
@@ -112,53 +109,13 @@ int CgiProcess::getPipeFd() const {
     return pipefd_[0];
 }
 
-int CgiProcess::getExitStatus() const {
+int CgiProcess::getExitStatus(){
+    waitpid(pid_, &cgiExitStatus_, 0);
+    // std::cout << "get exit status" << cgiExitStatus_<< std::endl;
     return cgiExitStatus_;
 }
 
-
-// std::string CgiProcess::readOutput() {
-//     char buffer[4096];
-//     ssize_t bytesRead = read(pipefd_[0], buffer, sizeof(buffer));
-
-//     if (bytesRead > 0) {
-//         // Des données ont été lues avec succès
-//         return std::string(buffer, bytesRead);
-//     } else if (bytesRead == 0) {
-//         // EOF atteint : le processus CGI a terminé son écriture
-//         std::cout << "CgiProcess::readOutput(): EOF atteint sur le pipe (read() a retourné 0)." << std::endl;
-//         // Fermer le descripteur de lecture du pipe
-//         close(pipefd_[0]);
-//         pipefd_[0] = -1;
-//         // Indiquer que la lecture est terminée, par exemple en utilisant un drapeau
-//         outputComplete_ = true;
-//         return "";
-//     } else if (bytesRead == -1) {
-//         // Une erreur est survenue lors de la lecture
-//         std::cerr << "CgiProcess::readOutput(): Erreur lors de read() sur le pipe (retourne -1)." << std::endl;
-//         // Fermer le descripteur de lecture du pipe
-//         close(pipefd_[0]);
-//         pipefd_[0] = -1;
-//         // Indiquer qu'une erreur s'est produite
-//         outputError_ = true;
-//         return "";
-//     }
-//     // Par sécurité, retourner une chaîne vide
-//     return "";
-// }
-
-// bool CgiProcess::isOutputComplete() const
-// {
-//     return outputComplete_;
-// }
-
-// bool CgiProcess::isOutputError() const
-// {
-//     return outputError_;
-// }
-
 void CgiProcess::createEnvp(const std::vector<std::string>& envVars) {
-    // Stocker les chaînes d'environnement pour assurer leur durée de vie
     for (size_t i = 0; i < envVars.size(); ++i) {
         envStrings_.push_back(envVars[i]);
         envp_.push_back(const_cast<char*>(envStrings_.back().c_str()));
@@ -173,16 +130,16 @@ void CgiProcess::cleanupEnvp() {
 
 
 void CgiProcess::createArgv(const std::map<std::string, std::string>& scriptParams) {
-    // Chemin vers l'interpréteur Python
+    // Path to Python interpretor
     std::string pythonInterpreter = "/usr/bin/python3";
     argStrings_.push_back(pythonInterpreter);
     args_.push_back(const_cast<char*>(argStrings_.back().c_str()));
 
-    // Chemin relatif vers le script Python
+    // Relative path to python script
     argStrings_.push_back(relativeFilePath_);
     args_.push_back(const_cast<char*>(argStrings_.back().c_str()));
 
-    // Ajouter les paramètres du script en tant qu'arguments
+    // Add params in the script as arguments
     for (std::map<std::string, std::string>::const_iterator it = scriptParams.begin(); it != scriptParams.end(); ++it) {
         // Format des arguments : --key=value
         std::string arg = "--" + it->first + "=" + it->second;
@@ -191,7 +148,7 @@ void CgiProcess::createArgv(const std::map<std::string, std::string>& scriptPara
         args_.push_back(const_cast<char*>(argStrings_.back().c_str()));
     }
 
-    // Terminer le tableau d'arguments avec NULL
+    // end arguments tab with NULL
     args_.push_back(NULL);
 }
 
@@ -200,7 +157,7 @@ void CgiProcess::cleanupArgv() {
     argStrings_.clear();
 }
 
-// Fonction pour décoder les caractères encodés au format %hexa dans la query string 
+// Decode encoded chars (%hexa format) in the QueryString
 void CgiProcess::paramDecode(std::string& param) const {
     std::string decoded;
     char hex[3];

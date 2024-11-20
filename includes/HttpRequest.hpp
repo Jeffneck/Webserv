@@ -4,6 +4,11 @@
 #include <string>
 #include <map>
 
+// these limit can be modified
+const size_t MAX_REQUEST_LINE_LENGTH = 500;
+const size_t MAX_URI_LENGTH = 250;
+
+
 class HttpRequest {
 public:
     HttpRequest();

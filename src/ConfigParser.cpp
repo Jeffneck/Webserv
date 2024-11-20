@@ -2,57 +2,42 @@
 #include "../includes/ConfigParser.hpp"
 #include "../includes/Server.hpp"
 #include "../includes/Location.hpp"
-#include <iostream> // Pour les messages d'erreur
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <cctype>
 #include <cstdlib>
-#include <arpa/inet.h> // Pour inet_pton
+#include <arpa/inet.h>
 #include <limits>
 
 
-// Constructeur
 ConfigParser::ConfigParser(const std::string &filePath)
     : currentTokenIndex_(0), filePath_(filePath), config_(NULL)
 {
 }
 
-// Destructeur
-ConfigParser::~ConfigParser()
-{
-    // Ne pas supprimer config_ ici car il est renvoyé par parse()
-}
+ConfigParser::~ConfigParser(){}
 
-// Méthode principale de parsing
 Config* ConfigParser::parse()
 {
-    // Lecture du contenu du fichier
     std::ifstream file(filePath_.c_str());
     if (!file.is_open())
     {
-        throw ParsingException("Impossible d'ouvrir le fichier de configuration: " + filePath_);
+        throw ParsingException("Error : Config File can't be opened" + filePath_);
     }
 
     std::stringstream buffer;
     buffer << file.rdbuf();
     file.close();
-
-    // Initialisation de config_
     config_ = new Config();
 
-    // Tokenisation du contenu
     tokenize(buffer.str());
-
-    // Analyse des tokens
     parseTokens();
-
-    // Valider la conformite de la configuration obtenue 
     checkConfigValidity();
 
     return config_;
 }
 
-// Méthode de tokenisation
 void ConfigParser::tokenize(const std::string &content)
 {
     std::string token;
@@ -63,7 +48,6 @@ void ConfigParser::tokenize(const std::string &content)
 
         if (c == '#')
         {
-            // Ignorer les commentaires
             while (i < content.length() && content[i] != '\n')
                 ++i;
         }
@@ -130,7 +114,7 @@ void ConfigParser::parseTokens()
             }
             else
             {
-                throw ParsingException("Directive inconnue dans le contexte global: " + token);
+                throw ParsingException("Unknown Directive in the context 'global': " + token);
             }
         }
     }
@@ -154,11 +138,11 @@ void ConfigParser::parseSimpleDirective(const std::string &directiveName, std::s
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("Valeur attendue après '" + directiveName + "'");
+        throw ParsingException("Value needed after '" + directiveName + "'");
     value = tokens_[currentTokenIndex_];
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-        throw ParsingException("';' attendu après la valeur de '" + directiveName + "'");
+        throw ParsingException("';' needed after '" + directiveName + "'");
     ++currentTokenIndex_;
 }
 
@@ -167,14 +151,14 @@ void ConfigParser::parseClientMaxBodySize(size_t &size)
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("Valeur attendue après 'client_max_body_size'");
+        throw ParsingException("Value needed after 'client_max_body_size'");
 
     // Récupérer le token représentant la taille
     std::string sizeToken = tokens_[currentTokenIndex_];
 
     // Vérifier que le token n'est pas vide
     if (sizeToken.empty())
-        throw ParsingException("Valeur vide pour 'client_max_body_size'");
+        throw ParsingException("empty value for 'client_max_body_size'");
 
     // Variables pour stocker la partie numérique et l'unité
     std::string numericPart;
@@ -190,7 +174,7 @@ void ConfigParser::parseClientMaxBodySize(size_t &size)
 
     // Vérifier qu'il y a bien une partie numérique
     if (numericPart.empty())
-        throw ParsingException("Valeur numérique attendue pour 'client_max_body_size'");
+        throw ParsingException("Numeric value needed for 'client_max_body_size'");
 
     // Récupérer la partie unité
     unitPart = sizeToken.substr(pos);
@@ -200,11 +184,11 @@ void ConfigParser::parseClientMaxBodySize(size_t &size)
     errno = 0; // Réinitialiser errno avant l'appel
     unsigned long numericValue = strtoul(numericPart.c_str(), &endptr, 10);
     if (*endptr != '\0' || errno == ERANGE)
-        throw ParsingException("Valeur numérique invalide pour 'client_max_body_size'");
+        throw ParsingException("Invalid numeric value for'client_max_body_size'");
 
     // Vérifier que numericValue peut être converti en size_t sans débordement
     if (numericValue > static_cast<unsigned long>(std::numeric_limits<size_t>::max()))
-        throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+        throw ParsingException("Too big value for 'client_max_body_size'");
 
     size_t sizeInBytes = static_cast<size_t>(numericValue);
 
@@ -214,24 +198,24 @@ void ConfigParser::parseClientMaxBodySize(size_t &size)
         if (unitPart == "k" || unitPart == "K")
         {
             if (sizeInBytes > std::numeric_limits<size_t>::max() / 1024)
-                throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+                throw ParsingException("Too big value for 'client_max_body_size'");
             sizeInBytes *= 1024;
         }
         else if (unitPart == "m" || unitPart == "M")
         {
             if (sizeInBytes > std::numeric_limits<size_t>::max() / (1024 * 1024))
-                throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+                throw ParsingException("Too big value for 'client_max_body_size'");
             sizeInBytes *= 1024 * 1024;
         }
         else if (unitPart == "g" || unitPart == "G")
         {
             if (sizeInBytes > std::numeric_limits<size_t>::max() / (static_cast<size_t>(1024) * 1024 * 1024))
-                throw ParsingException("Valeur trop grande pour 'client_max_body_size'");
+                throw ParsingException("Too big value for 'client_max_body_size'");
             sizeInBytes *= static_cast<size_t>(1024) * 1024 * 1024;
         }
         else
         {
-            throw ParsingException("Unité invalide pour 'client_max_body_size' (attendu 'k', 'm' ou 'g')");
+            throw ParsingException("Invalid unit after'client_max_body_size' (need 'k', 'm' or'g')");
         }
     }
 
@@ -240,7 +224,7 @@ void ConfigParser::parseClientMaxBodySize(size_t &size)
 
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-        throw ParsingException("';' attendu après la valeur de 'client_max_body_size'");
+        throw ParsingException("';' needed after 'client_max_body_size'");
     ++currentTokenIndex_;
 }
 // Méthode pour parser 'error_page' pour Config
@@ -248,7 +232,7 @@ void ConfigParser::parseErrorPage(Config &config)
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("Valeur attendue après 'error_page'");
+        throw ParsingException("Value needed after 'error_page'");
 
     // Collecter les codes d'état
     std::vector<int> statusCodes;
@@ -260,17 +244,17 @@ void ConfigParser::parseErrorPage(Config &config)
     }
 
     if (statusCodes.empty())
-        throw ParsingException("Au moins un code d'état attendu après 'error_page'");
+        throw ParsingException("Error code needed after 'error_page'");
 
     // Vérifier qu'il y a une URI après les codes d'état
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("URI attendu après les codes d'état dans 'error_page'");
+        throw ParsingException("URI needed after Error code 'error_page'");
 
     std::string uri = tokens_[currentTokenIndex_];
     ++currentTokenIndex_;
 
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-        throw ParsingException("';' attendu après l'URI de 'error_page'");
+        throw ParsingException("';' needed after URI 'error_page'");
     ++currentTokenIndex_;
 
     // Ajouter les associations code d'état -> URI dans la configuration
@@ -285,7 +269,7 @@ void ConfigParser::parseErrorPage(Server &server)
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("Valeur attendue après 'error_page'");
+        throw ParsingException("Value needed after 'error_page'");
 
     // Collecter les codes d'état
     std::vector<int> statusCodes;
@@ -297,17 +281,17 @@ void ConfigParser::parseErrorPage(Server &server)
     }
 
     if (statusCodes.empty())
-        throw ParsingException("Au moins un code d'état attendu après 'error_page'");
+        throw ParsingException("Error code needed after 'error_page'");
 
     // Vérifier qu'il y a une URI après les codes d'état
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("URI attendu après les codes d'état dans 'error_page'");
+        throw ParsingException("URI needed after 'error_page'");
 
     std::string uri = tokens_[currentTokenIndex_];
     ++currentTokenIndex_;
 
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-        throw ParsingException("';' attendu après l'URI de 'error_page'");
+        throw ParsingException("';' needed after 'error_page'");
     ++currentTokenIndex_;
 
     // Ajouter les associations code d'état -> URI dans le serveur
@@ -322,7 +306,7 @@ void ConfigParser::parseServer()
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != "{")
-        throw ParsingException("'{' attendu après 'server'");
+        throw ParsingException("'{' needed after 'server'");
     ++currentTokenIndex_;
 
     Server* server = new Server(*config_);
@@ -348,7 +332,7 @@ void ConfigParser::parseServer()
                 ++currentTokenIndex_;
             }
             if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-                throw ParsingException("';' attendu après les valeurs de 'server_name'");
+                throw ParsingException("';' needed after 'server_name'");
             ++currentTokenIndex_;
         }
         else if (token == "root")
@@ -379,28 +363,25 @@ void ConfigParser::parseServer()
         }
         else
         {
-            throw ParsingException("Directive inconnue dans le contexte 'server': " + token);
+            throw ParsingException("Unknown Directive in the context  'server': " + token);
         }
     }
-    // std::cout << "CONFIGPARSER parseServer :" << server->getHost()<<":" << server->getPort() << std::endl;//test
     config_->addServer(server);
 }
 
-// Méthode pour parser 'listen'
 void ConfigParser::parseListen(Server &server)
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("Valeur attendue après 'listen'");
+        throw ParsingException("Value needed after 'listen'");
 
     std::string listenValue = tokens_[currentTokenIndex_];
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-        throw ParsingException("';' attendu après la valeur de 'listen'");
+        throw ParsingException("';' needed after 'listen'");
     ++currentTokenIndex_;
 
-    // Parsing de listenValue pour extraire l'adresse IP et le port
-    std::string ipPart = "0.0.0.0"; // Valeur par défaut
+    std::string ipPart = "0.0.0.0";
     std::string portPart;
 
     size_t colonPos = listenValue.find(':');
@@ -414,22 +395,23 @@ void ConfigParser::parseListen(Server &server)
         portPart = listenValue;
     }
 
-    // Conversion de l'adresse IP en uint32_t
+    // IP char** to uint32_t(network)
     struct in_addr addr;
     if (inet_pton(AF_INET, ipPart.c_str(), &addr) != 1)
     {
-        throw ParsingException("Adresse IP invalide dans 'listen': " + ipPart);
+        throw ParsingException("Invalid IP Adress in 'listen': " + ipPart);
     }
 
-    // Conversion du port en uint16_t
+    // Port network to int
     int port = std::atoi(portPart.c_str());
     if (port <= 0 || port > 65535)
     {
-        throw ParsingException("Numéro de port invalide dans 'listen': " + portPart);
+        throw ParsingException("Invalid Port number in 'listen': " + portPart);
     }
 
-    server.setHost(addr.s_addr);                           // Déjà en ordre réseau
-    server.setPort(htons(static_cast<uint16_t>(port)));    // Conversion en ordre réseau
+    server.setHost(addr.s_addr);
+    // Port : int to uint16_t (network format)
+    server.setPort(htons(static_cast<uint16_t>(port)));    
     // std::cout << "CONFIGPARSER.cpp parseListen : "<< ipPart << ":"<<portPart << " hexa :" << server.getHost()<< ":" << server.getPort() << std::endl;//test
 }
 
@@ -438,13 +420,13 @@ void ConfigParser::parseLocation(Server &server)
 {
     ++currentTokenIndex_;
     if (currentTokenIndex_ >= tokens_.size())
-        throw ParsingException("Chemin attendu après 'location'");
+        throw ParsingException("Expecting path before 'location' block");
 
     std::string path = tokens_[currentTokenIndex_];
     ++currentTokenIndex_;
 
     if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != "{")
-        throw ParsingException("'{' attendu après le chemin de 'location'");
+        throw ParsingException("'{' Expected after 'location' path ");
     ++currentTokenIndex_;
 
     Location location(server, path);
@@ -463,6 +445,12 @@ void ConfigParser::parseLocation(Server &server)
             parseSimpleDirective("root", rootValue);
             location.setRoot(rootValue);
         }
+        else if (token == "client_max_body_size")
+        {
+            size_t size;
+            parseClientMaxBodySize(size);
+            location.setClientMaxBodySize(size);
+        }
         else if (token == "index")
         {
             std::string indexValue;
@@ -473,16 +461,16 @@ void ConfigParser::parseLocation(Server &server)
         {
             ++currentTokenIndex_;
             if (currentTokenIndex_ >= tokens_.size())
-                throw ParsingException("'on' ou 'off' attendu après 'autoindex'");
+                throw ParsingException("'on' or'off' needed after 'autoindex'");
             if (tokens_[currentTokenIndex_] == "on")
                 location.setAutoIndex(true);
             else if (tokens_[currentTokenIndex_] == "off")
                 location.setAutoIndex(false);
             else
-                throw ParsingException("Valeur invalide pour 'autoindex': " + tokens_[currentTokenIndex_]);
+                throw ParsingException("Invalid value for 'autoindex': " + tokens_[currentTokenIndex_]);
             ++currentTokenIndex_;
             if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-                throw ParsingException("';' attendu après la valeur de 'autoindex'");
+                throw ParsingException("';' needed after 'autoindex' value");
             ++currentTokenIndex_;
         }
 
@@ -490,16 +478,16 @@ void ConfigParser::parseLocation(Server &server)
         {
             ++currentTokenIndex_;
             if (currentTokenIndex_ >= tokens_.size())
-                throw ParsingException("'on' ou 'off' attendu après 'autoindex'");
+                throw ParsingException("'on' or'off' needed after'autoindex'");
             if (tokens_[currentTokenIndex_] == "on")
                 location.setCGIEnable(true);
             else if (tokens_[currentTokenIndex_] == "off")
                 location.setCGIEnable(false);
             else
-                throw ParsingException("Valeur invalide pour 'cgi': " + tokens_[currentTokenIndex_]);
+                throw ParsingException("Invalid value for 'cgi': " + tokens_[currentTokenIndex_]);
             ++currentTokenIndex_;
             if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-                throw ParsingException("';' attendu après la valeur de 'cgi'");
+                throw ParsingException("';' needed after 'cgi'");
             ++currentTokenIndex_;
         }
 
@@ -514,23 +502,8 @@ void ConfigParser::parseLocation(Server &server)
             }
             location.setAllowedMethods(methods);
             if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-                throw ParsingException("';' attendu après la valeur de 'cgi'");
+                throw ParsingException("';' needed after 'cgi'");
             ++currentTokenIndex_;
-
-            // if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != "{")
-            //     throw ParsingException("'{' attendu après les méthodes de 'limit_except'");
-
-            // // Ignorer le contenu du bloc 'limit_except' pour simplifier
-            // ++currentTokenIndex_;
-            // int braceCount = 1;
-            // while (currentTokenIndex_ < tokens_.size() && braceCount > 0)
-            // {
-            //     if (tokens_[currentTokenIndex_] == "{")
-            //         ++braceCount;
-            //     else if (tokens_[currentTokenIndex_] == "}")
-            //         --braceCount;
-            //     ++currentTokenIndex_;
-            // }
         }
         else if (token == "return")
         {
@@ -548,16 +521,16 @@ void ConfigParser::parseLocation(Server &server)
         {
             ++currentTokenIndex_;
             if (currentTokenIndex_ >= tokens_.size())
-                throw ParsingException("'on' ou 'off' attendu après 'upload_enable'");
+                throw ParsingException("'on' or'off' needed after 'upload_enable'");
             if (tokens_[currentTokenIndex_] == "on")
                 location.setUploadEnable(true);
             else if (tokens_[currentTokenIndex_] == "off")
                 location.setUploadEnable(false);
             else
-                throw ParsingException("Valeur invalide pour 'upload_enable': " + tokens_[currentTokenIndex_]);
+                throw ParsingException("Invalid value for 'upload_enable': " + tokens_[currentTokenIndex_]);
             ++currentTokenIndex_;
             if (currentTokenIndex_ >= tokens_.size() || tokens_[currentTokenIndex_] != ";")
-                throw ParsingException("';' attendu après la valeur de 'upload_enable'");
+                throw ParsingException("';' needed after 'upload_enable'");
             ++currentTokenIndex_;
         }
         else if (token == "upload_store")
@@ -568,7 +541,7 @@ void ConfigParser::parseLocation(Server &server)
         }
         else
         {
-            throw ParsingException("Directive inconnue dans le contexte 'location': " + token);
+            throw ParsingException("Unknown directive in the context 'location': " + token);
         }
     }
 
@@ -579,7 +552,6 @@ void ConfigParser::checkConfigValidity() const
 {
     if(!config_)
         throw (ParsingException("An error occured while charging configuration file"));
-    //verifier si getRoot fonctionne pour tout les serveurs
     const std::vector<Server*> servers = config_->getServers();
     if(!servers[0])
         throw (ParsingException("An error occured while charging configuration file : no server has been set"));
@@ -587,19 +559,17 @@ void ConfigParser::checkConfigValidity() const
     {
         if(servers[i]->getRoot() == "")
             throw (ParsingException("An error occured while charging configuration file :\n at least one server have no root directory"));
-        //attention si listen 0.0.0.0 = erreur throw
         if(servers[i]->getPort() == 0 )
             throw (ParsingException("An error occured while charging configuration file :\n at least one server dont have a valid IP:PORT to listen"));
     }
 }
 
-
-// Méthode pour afficher les résultats du parsing (Debug)
+//DEBUG METHOD
 void ConfigParser::displayParsingResult()
 {
     if (config_ == NULL)
     {
-        std::cerr << "Configuration non chargée." << std::endl;
+        std::cerr << "Error in the parsing of the .conf file" << std::endl;
         return;
     }
 

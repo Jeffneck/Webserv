@@ -127,26 +127,22 @@ const std::vector<Location> &Server::getLocations() const
 // DEBUG
 void Server::displayServer() const
 {
-    // Afficher l'adresse IP et le port
     char ipStr[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &host_, ipStr, INET_ADDRSTRLEN);
     std::cout << "  listen: " << ipStr << ":" << ntohs(port_) << std::endl;
 
-    // Affichage des server_name du serveur
     const std::vector<std::string> &serverNames = this->getServerNames();
     for (size_t j = 0; j < serverNames.size(); ++j)
     {
         std::cout << "  server_name: " << serverNames[j] << std::endl;
     }
 
-    // Affichage des pages d'erreur du serveur
     const std::map<int, std::string> &serverErrorPages = this->getErrorPages();
     for (std::map<int, std::string>::const_iterator it = serverErrorPages.begin(); it != serverErrorPages.end(); ++it)
     {
         std::cout << "  error_page " << it->first << " : " << it->second << std::endl;
     }
 
-    // Affichage du contenu des Locations du serveur
     const std::vector<Location> &locations = this->getLocations();
     for (size_t k = 0; k < locations.size(); ++k)
     {
