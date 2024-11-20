@@ -1,11 +1,11 @@
 // WebServer.cpp
-#include "WebServer.hpp"
+#include "../includes/WebServer.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <unistd.h>
 #include <signal.h>
 
-// Externe, défini dans main.cpp
+// Extern, defined in main.cpp, monitored by signals (Ctrl+C SIGINT is a way to stop Webserver properly)
 extern volatile bool g_running;
 
 WebServer::WebServer() : config_(NULL) {}
@@ -22,7 +22,7 @@ void WebServer::loadConfiguration(const std::string& configFile) {
     try {
         ConfigParser parser(configFile);
         config_ = parser.parse();
-        config_->displayConfig();//debug
+        // config_->displayConfig();// debug
     } catch (const ParsingException &e) {
         throw (e);
     }
@@ -30,25 +30,24 @@ void WebServer::loadConfiguration(const std::string& configFile) {
 
 void WebServer::start() {
     if (config_ == NULL) {
-        throw std::runtime_error("Configuration not loaded.");
+        throw std::runtime_error("Fatal Error : Configuration file not loaded.");
     }
 
     const std::vector<Server*>& servers = config_->getServers();
     listeningHandler_.initialize(servers);
-    std::cout << "Server started with " << servers.size() << " servers." << std::endl;
+    // Ignore SigPipe (broken pipe signal) => a broken pipe (CGI error) will not make Webserver stop but need to send HTTP 500 code and close client connection
+    signal(SIGPIPE, SIG_IGN);
+    // std::cout << "Server started with " << servers.size() << " servers." << std::endl;//debug
 }
 
-void WebServer::runEventLoop() {
-    std::cout << "WebServer::runEventLoop(): Démarrage de la boucle d'événements." << std::endl;
-    // Ignorer SIGPIPE pour éviter que le programme ne se termine lors d'un Broken Pipe
-    signal(SIGPIPE, SIG_IGN);
-    while (g_running) {
-        std::vector<struct pollfd> pollfds;
-        std::vector<ListeningSocket*> pollListeningSockets;
-        std::vector<DataSocket*> pollDataSockets;
-        std::vector<int> pollFdTypes; // 0: ListeningSocket, 1: ClientSocket, 2: CgiPipe
-
-        // Ajouter les sockets d'écoute
+void WebServer::setupPollfds(std::vector<struct pollfd> &pollfds,
+        std::vector<ListeningSocket*> &pollListeningSockets,
+        std::vector<DataSocket*> &pollDataSockets,
+        std::vector<int> &pollFdTypes)
+{
+    // Add Listening Sockets to pollfds 
+        //      a ListeningSocket is setup at IP:PORT of every server
+        //      Listening sockets are used to detect new connections and setup Datasockets for every client
         const std::vector<ListeningSocket*>& listeningSockets = listeningHandler_.getListeningSockets();
         size_t i;
         for (i = 0; i < listeningSockets.size(); ++i) {
@@ -62,26 +61,26 @@ void WebServer::runEventLoop() {
             pollFdTypes.push_back(0); // ListeningSocket
         }
 
-        // Ajouter les sockets de données
+        // Add dataSockets to pollfds for every client :
+        //      a Datasocket is created when a new client connects to a ListeningSocket 
+        //      multiples clients can be handled by 1 server
+        //      Datasockets are used to exchange with clients in HTTP
         const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
         for (i = 0; i < dataSockets.size(); ++i) {
             DataSocket* dataSocket = dataSockets[i];
-
-            // Socket client
             struct pollfd pfd;
             pfd.fd = dataSocket->getSocket();
             pfd.events = POLLIN | POLLOUT;
             pfd.revents = 0;
             pollfds.push_back(pfd);
-            pollListeningSockets.push_back(NULL); // Pas de ListeningSocket pour les DataSocket
+            pollListeningSockets.push_back(NULL); // No ListeningSocket in Datasockets
             pollDataSockets.push_back(dataSocket);
             pollFdTypes.push_back(1); // ClientSocket
 
-            // Pipe CGI (si présent)
+            // Add Pipe CGI to pollfds when a client request a file that needs to be exec by a CGI (Python here)
             if (dataSocket->hasCgiProcess() && !dataSocket->isCgiComplete()) {
                 struct pollfd cgiPfd;
                 cgiPfd.fd = dataSocket->getCgiPipeFd();
-                // std::cout << "add pipe to Poll : "<< cgiPfd.fd << std::endl;//test
                 cgiPfd.events = POLLIN;
                 cgiPfd.revents = 0;
                 pollfds.push_back(cgiPfd);
@@ -90,24 +89,42 @@ void WebServer::runEventLoop() {
                 pollFdTypes.push_back(2); // CgiPipe
             }
         }
+}
 
+void WebServer::runEventLoop() {
+    std::cout << "Info : Webserver is now running" << std::endl;
+    while (g_running) {
+        //Pollfds stores all fds we want to keep an eye on : it is used to monitor events in multiplexing IO (non-blocking state)
+        std::vector<struct pollfd> pollfds;
         
-        // Appel à poll()
-        int timeout = 12000; // Temps ms avant de sortir de l' etat de poll
+        //Utils allowing the access to sockets when an event is detected
+        std::vector<ListeningSocket*> pollListeningSockets;
+        std::vector<DataSocket*> pollDataSockets;
+
+        //Used to identify the type of the fd watched (events are treated differently in function of the fd)
+        std::vector<int> pollFdTypes; // 0: ListeningSocket, 1: ClientSocket, 2: CgiPipe
+
+        //Setup structures
+        setupPollfds(pollfds, pollListeningSockets, pollDataSockets, pollFdTypes);
+
+        // Monitor Multiplexing I/O phase
+        //      poll detect events and add flags to pollfds[i].revents
+        //      if a flag is detected for a fd / or poll timeout :  Multiplexing I/O phase ends
+        int timeout = 2000;
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
         if (ret < 0) {
-            // perror("poll");
-            break;
+            std::cerr << "Fatal Error : poll malfunction"<< std::endl;
+            cleanUp();
+            return;
         }
 
-
-        // Traitement des événements
+        // Events are treated after Multiplexing I/O phase
+        size_t i;
         for (i = 0; i < pollfds.size(); ++i) {
             if (pollfds[i].revents == 0)
                 continue;
-
+            // Listening Sockets ///////////////
             if (pollFdTypes[i] == 0) {
-                // Socket d'écoute
                 if (pollfds[i].revents & POLLIN) {
                     ListeningSocket* listeningSocket = pollListeningSockets[i];
                     int new_fd = listeningSocket->acceptConnection();
@@ -120,7 +137,7 @@ void WebServer::runEventLoop() {
                 // Socket client
                 DataSocket* dataSocket = pollDataSockets[i];
                 if (pollfds[i].revents & POLLIN) {
-                    std::cout << GREEN <<"DATASOCKET POLLIN" << RESET << std::endl;
+                    // std::cout << GREEN <<"DATASOCKET POLLIN" << RESET << std::endl;
                     if (!dataSocket->receiveData()) {
                         dataSocket->closeSocket();
                     } else if (dataSocket->isRequestComplete()) {
@@ -137,7 +154,7 @@ void WebServer::runEventLoop() {
                         }
                     }
                 }if (pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
-                    std::cout << GREEN <<"DATASOCKET POLLHUP POLLERR POLLNVAL" << RESET << std::endl;
+                    // std::cout << GREEN <<"DATASOCKET POLLHUP POLLERR POLLNVAL" << RESET << std::endl;
                     dataSocket->closeSocket();
                 }
 
@@ -147,66 +164,63 @@ void WebServer::runEventLoop() {
                 DataSocket* dataSocket = pollDataSockets[i];
                 //Data sent by CGI
                 if (pollfds[i].revents & POLLIN) {
-                    std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;//test
+                    // std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;
                     dataSocket->readFromCgiPipe();
                 }
                 //EOF sent by CGI
                 else if (pollfds[i].revents & (POLLHUP)) {
-                    std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;//test
+                    // std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;
                     dataSocket->readFromCgiPipe();
                     dataSocket->closeCgiPipe();
                 }
                 else if (pollfds[i].revents & (POLLERR | POLLNVAL)) {
-                    std::cout<< GREEN << "CGI POLLERR EVENT"<< RESET <<std::endl;//test
+                    // std::cout<< GREEN << "CGI POLLERR EVENT"<< RESET <<std::endl;//test
                     dataSocket->closeCgiPipe();
                 }
             }
         }
 
-        checkCgiTimeouts();//verif si les timeouts ce sont declenches avant d' entrer dans poll
+        //Events after each multiplexing session
+        checkCgiTimeouts();
         checkDataSocketTimeouts();
-        // Nettoyage des sockets fermées
         dataHandler_.removeClosedSockets();
     }
-    std::cout << "Boucle d'événements terminée. Fermeture du serveur." << std::endl;
-
-    // Appeler la fonction de nettoyage
+    std::cout << "Info : Webserver had been shut down" << std::endl;
     cleanUp();
 }
 
 void WebServer::checkCgiTimeouts() {
     std::vector<DataSocket*>::iterator it = activeCgiSockets_.begin();
-    // int i = 0; //debug
     while (it != activeCgiSockets_.end()) {
         DataSocket* dataSocket = *it;
-        // std::cout << "WebServer::checkCgiTimeouts"<< i++ << std::endl; // le programme n' arrive jamais ici
         if (dataSocket->hasCgiProcess()) {
             if (!dataSocket->cgiProcessIsRunning()) {
-                // Le processus CGI n'est plus en cours d'exécution
+                // CGI process is not running anymore in Datasocket
                 it = activeCgiSockets_.erase(it);
             } else if (dataSocket->cgiProcessHasTimedOut()) {
-                // Le processus CGI a dépassé le délai maximal
+                // CGI process timed out
                 dataSocket->terminateCgiProcess();
                 it = activeCgiSockets_.erase(it);
             } else {
+                // CGI process still running properly
                 ++it;
             }
         } else {
-            // Le DataSocket n'a plus de processus CGI
+            // Datasocket have no more CGI process
             it = activeCgiSockets_.erase(it);
         }
     }
 }
 
 void WebServer::checkDataSocketTimeouts() {
-    // std::cout << "WebServer::checkDataSocketTimeouts" << std::endl;
+    // std::cout << "WebServer::checkDataSocketTimeouts" << std::endl;//debug
     const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
     time_t currentTime = time(NULL);
 
     for (size_t i = 0; i < dataSockets.size(); ++i) {
         DataSocket* dataSocket = dataSockets[i];
-        if (difftime(currentTime, dataSocket->getLastActivityTime()) > INACTIVITY_TIMEOUT) {
-            std::cout << RED << "DataSocket timeout. Closing inactive socket fd: " << dataSocket->getSocket() << RESET << std::endl;
+        if (difftime(currentTime, dataSocket->getLastActivityTime()) > SOCKET_INACTIVITY_TIMEOUT) {
+            // std::cout << RED << "DataSocket timeout. Closing inactive socket fd: " << dataSocket->getSocket() << RESET << std::endl; //debug
             dataSocket->closeSocket();
         }
     }

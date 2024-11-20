@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <sys/types.h>
+#include <sys/time.h>
+
 
 class CgiProcess {
 public:

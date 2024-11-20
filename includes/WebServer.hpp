@@ -12,7 +12,9 @@
 #include "ConfigParser.hpp"
 #include "Color_Macros.hpp"
 
-const time_t INACTIVITY_TIMEOUT = 45; // en secondes
+// Time to close inactive DataSockets in seconds
+const time_t SOCKET_INACTIVITY_TIMEOUT = 45; 
+const time_t MULTIPLEXING_LOOP_TIME = 45; 
 
 class WebServer {
 private:
@@ -22,15 +24,21 @@ private:
     Config* config_;                          // Pointeur vers la configuration
 
 public:
-    WebServer(); // Constructeur par défaut
-    ~WebServer(); // Destructeur pour nettoyer les ressources
+    WebServer();
+    ~WebServer();
 
-    void loadConfiguration(const std::string& configFile); // Charge les configurations depuis le fichier
-    void start(); // Démarre le serveur
-    void runEventLoop(); // Boucle principale d'événements
-    void checkCgiTimeouts(); //verif si les cgi ont depasse leur delai hors de la boucle poll
-    void checkDataSocketTimeouts(); //verif si les datasockets ont depasse leur delai hors de la boucle poll
-    void cleanUp(); // Nettoie les ressources et ferme les sockets
+    // Prepare Webserver
+    void loadConfiguration(const std::string& configFile);
+    void start();
+    
+    // Running WebServer Loop
+    void runEventLoop(); 
+    void setupPollfds(std::vector<struct pollfd> &pollfds, std::vector<ListeningSocket*> &pollListeningSockets, std::vector<DataSocket*> &pollDataSockets, std::vector<int> &pollFdTypes);
+    void checkCgiTimeouts(); 
+    void checkDataSocketTimeouts(); 
+
+    // Close exit Webserver
+    void cleanUp(); 
 };
 
 #endif // WEBSERVER_HPP

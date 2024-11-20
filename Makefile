@@ -3,6 +3,7 @@ NAME		= webserv
 CC			= c++
 
 CFLAGS		= -std=c++98 -g3 -Wall -Wextra -Werror -D_GLIBCXX_USE_CXX11_ABI=0
+# CFLAGS		= -std=c++98 -g3 -Wall -Wextra -Werror 
 
 SRC_FILES 	=	src/main.cpp \
 				src/HttpRequest.cpp \
