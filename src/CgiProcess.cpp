@@ -71,9 +71,8 @@ bool CgiProcess::start() {
     }
 
     // Parent process
-
-    // Fermer le descripteur d'écriture inutilisé
     close(pipefd_[1]);
+    // Used to monitor the time of the process (Inactive process = timeout)
     startTime_ = time(NULL);
     return true;
 }
@@ -86,15 +85,14 @@ bool CgiProcess::hasTimedOut() const {
 void CgiProcess::terminate() {
     if (pid_ > 0) {
         kill(pid_, SIGKILL);
-        waitpid(pid_, &cgiExitStatus_, 0); // Éviter les processus zombies
-        std::cout << "Waitpid terminate"<< cgiExitStatus_ << std::endl;
+        // Avoid Zombie process
+        waitpid(pid_, &cgiExitStatus_, 0); 
         pid_ = -1;
     }
 } 
 
 bool CgiProcess::isRunning() {
     pid_t result = waitpid(pid_, &cgiExitStatus_, WNOHANG);
-    std::cout << "Waitpid running" << cgiExitStatus_<< std::endl;
     if (result == 0) {
         // process still executing
         return true;
@@ -111,7 +109,6 @@ int CgiProcess::getPipeFd() const {
 
 int CgiProcess::getExitStatus(){
     waitpid(pid_, &cgiExitStatus_, 0);
-    // std::cout << "get exit status" << cgiExitStatus_<< std::endl;
     return cgiExitStatus_;
 }
 

@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 
     std::string configFile;
     if (argc == 1) {
-        configFile = "./app/webserv.conf";
+        configFile = "./configs/webserv.conf";
     }
     else if (argc == 2) {
         configFile = argv[1];

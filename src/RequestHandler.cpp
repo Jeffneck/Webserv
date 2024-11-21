@@ -418,11 +418,11 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
     std::string fileContent = buffer.str();
     file.close();
 
-    // Définir les en-têtes et le corps de la réponse
+    // Define response headers and body
     response.setStatusCode(200);
     response.setBody(fileContent);
 
-    // Définir le Content-Type en fonction de l'extension du fichier
+    // Define Content-Type according to file extension
     size_t dotPos = fullPath.find_last_of('.');
     if (dotPos != std::string::npos) {
         std::string extension = fullPath.substr(dotPos + 1);
@@ -436,34 +436,46 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
     return response;
 }
 
-
+/*
+ * This function handles file uploads from HTTP requests with the "multipart/form-data" content type.
+ * 
+ * Steps:
+ * 1. It first checks if the Content-Type of the request is "multipart/form-data".
+ * 2. It extracts the boundary parameter from the Content-Type header, which is used to separate different parts of the request body.
+ * 3. It reads the body of the request and checks if the upload directory exists.
+ * 4. The body of the request is then parsed to separate each part. Each part contains headers and the actual file data.
+ * 5. For each part, it looks for the "filename" field in the headers to identify if it's a file part.
+ * 6. If a file is found, it saves the file to the specified upload directory.
+ * 7. If any errors occur (such as missing Content-Type, boundary, or upload directory issues), an error response is returned.
+ * 8. On successful upload, a 201 status code is returned along with a success message.
+ */
 HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const Location* location, const Server* server) const {
     std::cout << RED << "RequestHandler::handleFileUpload" << RESET << std::endl; // Test
     HttpResponse response;
 
-    // Vérifier que le Content-Type est multipart/form-data
+    // Check that the Content-Type is multipart/form-data
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != 0 ) {
         response = handleError(400, getErrorPageFullPath(400, location, server));
         return response;
     }
 
-    // Extraire la limite (boundary) de l'en-tête Content-Type
+    // Extract boundary from Content-Type header
     std::string boundaryPrefix = "boundary=";
     std::string::size_type boundaryPos = contentType.find(boundaryPrefix);
     if (boundaryPos == std::string::npos) {
-        // Pas de boundary trouvé
+        // No boundary found
         response = handleError(400, getErrorPageFullPath(400, location, server));
         return response;
     }
     boundaryPos += boundaryPrefix.length();
     std::string boundary = "--" + contentType.substr(boundaryPos);
 
-    // Lire le corps de la requête
+    // Read the body of the request
     std::string body = request.getBody();
 
-    // Vérifier que le répertoire d'upload existe
-    std::string uploadDirectory = location->getUploadStore();  // Obtenir le répertoire d'upload depuis la configuration
+    // Check that the upload directory exists
+    std::string uploadDirectory = location->getUploadStore();
     struct stat dirStat;
     if (stat(uploadDirectory.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode)) {
         std::cerr << "Upload directory does not exist: " << uploadDirectory << std::endl;
@@ -471,23 +483,24 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
         return response;
     }
 
-    // Séparer les différentes parties
+    // Separate the different parts
     std::string::size_type start = 0;
     while ((start = body.find(boundary, start)) != std::string::npos) {
         start += boundary.length();
+        //end = next boundary found (if not found, there is no more content to read)
         std::string::size_type end = body.find(boundary, start);
         if (end == std::string::npos) break;
 
         std::string part = body.substr(start, end - start);
 
-        // Extraire les en-têtes de la partie
+        // Extract part headers (each part separated by a boudary have headers)
         std::string::size_type headerEnd = part.find("\r\n\r\n");
         if (headerEnd == std::string::npos) continue;
 
         std::string headers = part.substr(0, headerEnd);
         std::string fileData = part.substr(headerEnd + 4);
 
-        // Vérifier si cette partie est un fichier
+        // Check if this part is a file
         std::string filenamePrefix = "filename=\"";
         std::string::size_type filenamePos = headers.find(filenamePrefix);
         if (filenamePos != std::string::npos) {
@@ -495,17 +508,17 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
             if (filenameEndPos != std::string::npos) {
                 std::string filename = headers.substr(filenamePos + filenamePrefix.length(), filenameEndPos - (filenamePos + filenamePrefix.length()));
 
-                // Construire le chemin complet pour sauvegarder le fichier
+                // Build the complete path to save the file
                 std::string fullPath = uploadDirectory + "/" + filename;
 
-                // Sauvegarder le fichier
+                // Save the file
                 std::ofstream file(fullPath.c_str(), std::ios::binary);
                 if (file.is_open()) {
                     file.write(fileData.c_str(), fileData.size());
                     file.close();
-                    std::cout << "File saved: " << fullPath << std::endl;
+                    std::cout << "Info : File saved: " << fullPath << std::endl;
                 } else {
-                    std::cerr << "Failed to save file: " << fullPath << std::endl;
+                    std::cerr << "Error : Failed to save file: " << fullPath << std::endl;
                     response = handleError(500, getErrorPageFullPath(500, location, server));
                     return response;
                 }
@@ -514,6 +527,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     }
 
     response.setStatusCode(201);
+    response.setHeader("Connection", "close");
     response.setBody("File upload successful.");
     return response;
 }
