@@ -2,8 +2,12 @@
 #include "../includes/Color_Macros.hpp"
 #include <iostream>
 
-Config::Config()
-    : clientMaxBodySize_(0)
+Config::Config() : 
+    clientMaxBodySize_(0),
+    errorPages_(),
+    root_(""),
+    index_(""),
+    servers_()
 {
 }
 

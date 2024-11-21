@@ -33,7 +33,15 @@ Config* ConfigParser::parse()
 
     tokenize(buffer.str());
     parseTokens();
-    checkConfigValidity();
+    try 
+    {
+        checkConfigValidity();
+    }
+    catch (std::exception &e)
+    {
+        delete config_;
+        config_ = NULL;
+    }
 
     return config_;
 }
@@ -415,7 +423,6 @@ void ConfigParser::parseListen(Server &server)
     // std::cout << "CONFIGPARSER.cpp parseListen : "<< ipPart << ":"<<portPart << " hexa :" << server.getHost()<< ":" << server.getPort() << std::endl;//test
 }
 
-// Méthode pour parser une location
 void ConfigParser::parseLocation(Server &server)
 {
     ++currentTokenIndex_;
@@ -553,7 +560,7 @@ void ConfigParser::checkConfigValidity() const
     if(!config_)
         throw (ParsingException("An error occured while charging configuration file"));
     const std::vector<Server*> servers = config_->getServers();
-    if(!servers[0])
+    if(servers.empty())
         throw (ParsingException("An error occured while charging configuration file : no server has been set"));
     for(size_t i = 0; i < servers.size(); i++)
     {

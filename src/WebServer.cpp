@@ -11,8 +11,10 @@ extern volatile bool g_running;
 WebServer::WebServer() : config_(NULL) {}
 
 WebServer::~WebServer() {
+    std::cout << "Destr webserv" << std::endl;//debug
     cleanUp();
     if (config_ != NULL) {
+        std::cout << "Del config" << std::endl;//debug
         delete config_;
         config_ = NULL;
     }
@@ -30,7 +32,7 @@ void WebServer::loadConfiguration(const std::string& configFile) {
 
 void WebServer::start() {
     if (config_ == NULL) {
-        throw std::runtime_error("Fatal Error : Configuration file not loaded.");
+        throw std::runtime_error("Configuration file not loaded.");
     }
 
     const std::vector<Server*>& servers = config_->getServers();
