@@ -11,10 +11,8 @@ extern volatile bool g_running;
 WebServer::WebServer() : config_(NULL) {}
 
 WebServer::~WebServer() {
-    std::cout << "Destr webserv" << std::endl;//debug
     cleanUp();
     if (config_ != NULL) {
-        std::cout << "Del config" << std::endl;//debug
         delete config_;
         config_ = NULL;
     }

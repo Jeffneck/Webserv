@@ -1,3 +1,21 @@
+fichier vide OK
+serveur sans root OK
+serveur sans listen OK
+
+upload off => err 405 OK
+upload store => changement OK
+upload store => inexistant err500 OK
+upload > client max body size = err 413 ok
+
+cgi off = err 405 OK
+cgi extension pas ok = err 405 OK
+lancer hello.fake avec l' extension cgi setup a .fake => OK
+lancer hello.py avec l' extension cgi setup a .fake => telecharge hello.py (OK puisque .py est desormais considere comme un static file et en application/octet stream)
+
+
+
+
+
 # Checker avec valgrind : 
 valgrind --leak-check=full --track-fds=yes ./test_webserv > stdout 2>stderr
 
@@ -16,29 +34,34 @@ modifier les Url testees
 
 CHECKS FONCTIONNELS 
 
-Vérification basique avec curl :
-curl http://127.0.0.1:8080
+Vérification basique avec curl : OK
+curl http://127.0.0.1:8080 
 
-Acces au second serveur sur le meme ip:port avec curl :
+Acces au second serveur sur le meme ip:port avec curl : OK
 curl http://127.0.0.1:8080 -H "Host:anotherhost"
 
 Tester avec différentes méthodes HTTP :
-GET :
+GET : OK
 curl -X GET http://127.0.0.1:8080
 
-
-
-POST :
+POST : OK
 curl -X POST 127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Type: application/x-www-form-urlencoded" -d "name=testname&email=testemail&message=testmessage"
 
-PUT : (fonctionnalite non implementee)
+PUT : (ERR 501 OK)
 curl -X PUT http://127.0.0.1:8080 -d 'key=value'
 
 DELETE :
-touch nginxApp/SimpleWebsite/cgi-bin/uploads/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-bin/uploads/testfile
+touch app/website/uploads/testfile && curl -X DELETE http://127.0.0.1:8080/uploads/testfile
 
 DELETE INTERDIT
-touch nginxApp/SimpleWebsite/cgi-bin/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-bin/testfile || rm nginxApp/SimpleWebsite/cgi-bin/testfile
+touch app/website/cgi-bin/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-bin/testfile || rm app/website/cgi-bin/testfile
+
+DELETE UN FICHIER INEXISTANT
+curl -X DELETE http://127.0.0.1:8080/cgi-bin/testfile
+
+DELETE UN DOSSIER
+curl -X DELETE http://127.0.0.1:8080/uploads/
+
 
 Tester avec des en-têtes personnalisés :
 curl -X GET http://127.0.0.1:8080 -H "Authorization: Bearer token"

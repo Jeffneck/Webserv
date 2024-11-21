@@ -37,10 +37,11 @@ Config* ConfigParser::parse()
     {
         checkConfigValidity();
     }
-    catch (std::exception &e)
+    catch (ParsingException &e)
     {
         delete config_;
         config_ = NULL;
+        throw (e);
     }
 
     return config_;
@@ -565,9 +566,9 @@ void ConfigParser::checkConfigValidity() const
     for(size_t i = 0; i < servers.size(); i++)
     {
         if(servers[i]->getRoot() == "")
-            throw (ParsingException("An error occured while charging configuration file :\n at least one server have no root directory"));
+            throw (ParsingException("An error occured while charging configuration file :\nat least one server have no root directory"));
         if(servers[i]->getPort() == 0 )
-            throw (ParsingException("An error occured while charging configuration file :\n at least one server dont have a valid IP:PORT to listen"));
+            throw (ParsingException("An error occured while charging configuration file :\nat least one server don't have a valid IP:PORT to listen"));
     }
 }
 

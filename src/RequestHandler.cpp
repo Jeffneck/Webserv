@@ -537,23 +537,22 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 
     HttpResponse response;
 
-    // Déterminer le répertoire racine
+    // Get root directory
     std::string root = server->getRoot();
     if (location) {
         root = location->getRoot();
     }
 
-    // Construire le chemin complet du fichier à supprimer
+    // Build complete path to file to delete
     std::string requestPath = request.getPath();
 
-    // Gérer le cas où le chemin se termine par un '/'
+    // Manage case wher '/' is at the end (file to delete is a directory = Error)
     if (!requestPath.empty() && requestPath[requestPath.size() - 1] == '/') {
-        // Les requêtes DELETE ne devraient pas se terminer par un '/', renvoyer une erreur
         response = handleError(400, getErrorPageFullPath(400, location, server));
         return response;
     }
 
-    // Retirer le chemin de la location du requestPath si root est défini dans la location
+    // Remove location path from requestPath if root is defined in the location
     if (location && location->getRootIsSet()) {
         std::string to_remove = location->getPath();
         if (requestPath.find(to_remove) == 0) {
@@ -561,17 +560,17 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
         }
     }
 
-    // Construire le chemin absolu vers le fichier
+    // Build the absolute path to the file
     std::string fullPath = root + requestPath;
     std::cout << "Attempting to delete file: " << fullPath << std::endl; // Debug
 
-    // Sécuriser le chemin
+    // Verify if path is secure
     if (!isPathSecure(root, fullPath)) {
         response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
-    // Vérifier si le fichier existe
+    // Verify if file exist
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
         if (errno == ENOENT) {
@@ -584,30 +583,30 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
         }
     }
 
-    // Vérifier que c'est un fichier régulier
+    // Verify if it is a regular file
     if (!S_ISREG(fileStat.st_mode)) {
         std::cerr << "RequestHandler::handleDeletion : Target is not a regular file." << std::endl;
         response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
-    // Vérifier les permissions de suppression
+    // Verify if we are allowed to delete this file
     if (access(fullPath.c_str(), W_OK) != 0) {
         std::cerr << "RequestHandler::handleDeletion : No permission to delete the file: " << strerror(errno) << std::endl;
         response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
-    // Tenter de supprimer le fichier
+    // Try to delete the file
     if (unlink(fullPath.c_str()) != 0) {
         std::cerr << "RequestHandler::handleDeletion : Failed to delete file: " << strerror(errno) << std::endl;
         response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
         return response;
     }
 
-    // Construire la réponse de succès
+    // build success response
     response.setStatusCode(204);
-    response.setBody("File deleted successfully.");
+    // response.setBody("File deleted successfully.");
     response.setHeader("Content-Type", "text/plain; charset=UTF-8");
     response.setHeader("Connection", "close");
 

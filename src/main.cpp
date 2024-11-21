@@ -34,14 +34,8 @@ int main(int argc, char *argv[])
         WebServer webServer;
 
         // Charger la configuration à partir du fichier
-        try {
-            webServer.loadConfiguration(configFile);
-            std::cout << "Info : Configuration loaded successfully" << std::endl;
-        }
-        catch (const ParsingException &e) {
-            std::cout << e.what() << std::endl;
-            return 1;
-        }
+        webServer.loadConfiguration(configFile);
+        std::cout << "Info : Configuration loaded successfully" << std::endl;
         webServer.start();
         std::cout << "Info : Webserver is now running" << std::endl;
         webServer.runEventLoop();
