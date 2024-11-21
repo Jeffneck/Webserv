@@ -12,6 +12,6 @@ std::string toString(int value);
 std::string toString(long value);
 
 bool endsWith(const std::string& fullString, const std::string& ending);
-
+void decodeURI(std::string &toDecode);
 
 #endif // UTILS_HPP

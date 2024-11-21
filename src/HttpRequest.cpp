@@ -254,6 +254,7 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
     knownMethods.insert("PUT");
     knownMethods.insert("HEAD");
     knownMethods.insert("OPTIONS");
+    knownMethods.insert("TRACE");
     knownMethods.insert("PATCH");
 
     // Detect impossible Methods

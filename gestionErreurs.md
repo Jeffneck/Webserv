@@ -50,39 +50,27 @@ curl -X POST 127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Type: application
 PUT : (ERR 501 OK)
 curl -X PUT http://127.0.0.1:8080 -d 'key=value'
 
-DELETE :
+DELETE :(HTTP 204 OK)
 touch app/website/uploads/testfile && curl -X DELETE http://127.0.0.1:8080/uploads/testfile
 
-DELETE INTERDIT
+DELETE INTERDIT (ERR 405 OK)
 touch app/website/cgi-bin/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-bin/testfile || rm app/website/cgi-bin/testfile
 
-DELETE UN FICHIER INEXISTANT
-curl -X DELETE http://127.0.0.1:8080/cgi-bin/testfile
+DELETE UN FICHIER INEXISTANT (ERR 404 OK)
+curl -X DELETE http://127.0.0.1:8080/uploads/testfile
 
-DELETE UN DOSSIER
+DELETE UN DOSSIER (ERR 400 OK)
 curl -X DELETE http://127.0.0.1:8080/uploads/
 
 
-Tester avec des en-têtes personnalisés :
+Tester avec des en-têtes personnalisés : (Page servie normalement OK) 
 curl -X GET http://127.0.0.1:8080 -H "Authorization: Bearer token"
-Envoyer des données JSON dans un POST :
+
+Envoyer des données JSON dans un POST :(ERR 415 OK => unsupported media type)
 curl -X POST http://127.0.0.1:8080 -H "Content-Type: application/json" -d '{"key":"value"}'
-Tester la réponse avec verbose :
-curl -v http://127.0.0.1:8080
-Tester le délai d'attente (timeout) :
-curl --max-time 5 http://127.0.0.1:8080
-Vérifier si le serveur redirige (301 ou 302) :
-curl -I http://127.0.0.1:8080
-Télécharger un fichier via HTTP :
-curl -O http://127.0.0.1:8080/fichier.txt
-Tester une requête HTTPS (si applicable) :
-curl -k https://127.0.0.1:8080
-Tester avec telnet pour un test basique de connexion :
-telnet 127.0.0.1 8080
 
-
-
-
+Télécharger un fichier via HTTP (fichier telecharge a la racine OK) :
+curl -O http://127.0.0.1:8080/static/index.html
 
 
 
@@ -91,11 +79,18 @@ Situations possibles :
 
 Requête malformée : Le client envoie une requête HTTP avec une syntaxe incorrecte, ce qui empêche le serveur de la comprendre. Par exemple, une ligne de requête incomplète ou des en-têtes mal formatés.
 
-echo -e "GET / HTTP/1.1\nHost: 127.0.0.1:8080\n\n" | nc 127.0.0.1 8080
-//entete host vide OK
-curl -v http://127.0.0.1:8080 -H "Host:"
-//sans entete host OK
-curl -v --http1.1 http://127.0.0.1:8080 -H "Host"
+//Cas ou cela fonctionne sans erreur
+curl http://127.0.0.1:8080 -H "Host:localhost"
+//on utilise un second hote valide
+curl http://127.0.0.1:8080 -H "Host:anotherhost"
+//on utilise un hote invalide,le serveur est le 1er par defaut pour l'IP:PORT
+curl http://127.0.0.1:8080 -H "Host:invalidhost"
+
+//sans en-tete host (ERR 400 OK)
+curl http://127.0.0.1:8080 -H "Host:"
+
+//Methode HTTP inexistente
+curl -X INEXISTENT http://127.0.0.1:8080/
 
 
 En-têtes invalides : Les en-têtes de la requête contiennent des valeurs invalides ou incohérentes, comme un en-tête Content-Length négatif ou non numérique.
@@ -103,51 +98,41 @@ En-têtes invalides : Les en-têtes de la requête contiennent des valeurs inval
 // cas ou cela fonctionne OK
 curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -d "name=ntest&email=etest%40test.com&message=mtest"
 
-//cas ou cela ne fonctionne pas car Content-Length est negatif
+//cas ou cela ne fonctionne pas car Content-Length est negatif (ERR 400 OK)
 curl -v -X POST http://127.0.0.1:8080/cgi-bin/display.py -H "Content-Length: -10" -d "somedata"
 
-Encodage incorrect : Le corps de la requête est encodé dans un format que le serveur ne peut pas décoder, ou l'en-tête Content-Encoding spécifie un encodage non supporté.
-curl -v http://127.0.0.1:8080 -H "Content-Encoding: unsupported-encoding"
-
-Requête trop longue : La requête dépasse la taille maximale que le serveur est configuré pour accepter.
-curl -v -X POST http://127.0.0.1:8080 -d "$(head -c 1000000 /dev/urandom | base64)"
-
-2. 401 Unauthorized (401 - Non autorisé)
-Situations possibles :
-
-Authentification requise : Si vous implémentez une protection par authentification pour certaines ressources, le serveur renverra ce code lorsque le client n'a pas fourni de credentials valides.
-curl -v http://127.0.0.1:8080/protected-resource
-
-Accès à des ressources protégées : Le client tente d'accéder à une page ou un fichier nécessitant une authentification, mais les informations d'authentification sont manquantes ou invalides.
-curl -v http://127.0.0.1:8080/protected-resource --user fakeuser:fakepassword
 
 3. 403 Forbidden (403 - Accès interdit)
 Situations possibles :
 
 Permissions de fichier insuffisantes : Les permissions du système de fichiers empêchent le serveur de lire le fichier demandé, même si le chemin est correct.
-chmod 000 /chemin/vers/webroot/secret.html
-curl -v http://127.0.0.1:8080/secret.html
+//avant interdiction (OK)
+curl http://127.0.0.1:8080/forbiddenFolder/forbiddenFile.txt
 
-Interdiction de lister le contenu : Si l'autoindex est désactivé pour un répertoire et qu'il n'y a pas de fichier d'index (comme index.html), le serveur peut renvoyer une erreur 403.
-curl -v http://127.0.0.1:8080/private-directory/
+//apres interdiction (ERR 403 OK)
+chmod 000 ./app/website/forbiddenFolder/forbiddenFile.txt && curl -v http://127.0.0.1:8080/forbiddenFolder/forbiddenFile.txt && chmod 777 ./app/website/forbiddenFolder/forbiddenFile.txt
+
+Interdiction de lister le contenu : Si l'autoindex est désactivé pour un répertoire et qu'il n'y a pas de fichier d'index (comme index.html)
+//Ce Dir est autoindex off (ERR 403 OK)
+curl http://127.0.0.1:8080/forbiddenFolder/
 
 4. 404 Not Found (404 - Page non trouvée)
 Situations possibles :
 
 Ressource inexistante : Le client demande une page, un fichier ou une ressource qui n'existe pas sur le serveur.
-curl -v http://127.0.0.1:8080/nonexistent-page.html
+curl http://127.0.0.1:8080/nonexistent-page.html
 
-Le client essaye de delete une ressource inexistante (HUGO)
-curl -X DELETE http://127.0.0.1:8080/cgi-bin/uploads/inexistentfile
+Le client essaye de delete une ressource inexistante (ERR 404 OK)
+curl -X DELETE http://127.0.0.1:8080/uploads/inexistentfile
 
 Chemin incorrect : L'URL fournie par le client est incorrecte ou contient des erreurs de frappe.
-curl -v http://127.0.0.1:8080/wrongpath/
+curl http://127.0.0.1:8080/wrongpath/
 
 5. 405 Method Not Allowed (405 - Méthode non autorisée)
 Situations possibles :
 
 Méthode HTTP non supportée : Le client utilise une méthode HTTP (comme PUT, DELETE, PATCH) que le serveur ne reconnaît pas ou n'accepte pas pour la ressource demandée.
-curl -v -X TRACE http://127.0.0.1:8080/
+
 
 Restriction sur les méthodes : Le serveur est configuré pour n'accepter que certaines méthodes pour une ressource donnée. Par exemple, une page qui n'accepte que GET et HEAD, et le client envoie une requête POST.
 curl -v -X GET http://127.0.0.1:8080/secretFolder/secretFile.txt
@@ -156,34 +141,29 @@ curl -v -X GET http://127.0.0.1:8080/secretFolder/secretFile.txt
 Situations possibles :
 
 Inactivité du client : Le client met trop de temps à envoyer l'intégralité de sa requête, et le serveur ferme la connexion après un certain délai.
-curl --max-time 15 http://127.0.0.1:8080/index.html
 
 Délai dépassé lors du téléchargement : Lors du téléversement de fichiers, si le client met trop de temps à envoyer les données, le serveur peut renvoyer cette erreur.
+Telecharger un fichier trop gros
+
+411 - Length recquired
+faire un Post sans content length
+curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length:" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 413 - Request too long
 
-provoquer l' erreur (fichier supp a 12Mo):
-dd if=/dev/zero bs=1M count=12 | curl -X POST http://localhost:8080/cgi-bin/uploads/ \
-  -H "Content-Type: application/x-www-form-urlencoded" \ 
-  --data-binary @-
+provoquer l' erreur (telecharger un fichier plus gros que client_max_body size du fichier de config)(Err 413 OK)
 
-414 - URI too long (limite choisie len>100)
-http://127.0.0.1:8080/URItoolooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
 
-415 - Unsupported media type
-Fonctionne :
-echo -n "name=nom&email=testmail&message=test" | curl -X POST http://localhost:8080/cgi-bin/contactForm.py \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  --data-binary @-
+414 - URI too long (limite choisie len>100) (Err 414 OK)
+curl http://127.0.0.1:8080/URItoolooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
 
-provoque err 415 :
-echo -n "name=nom&email=testmail&message=test" | curl -X POST http://localhost:8080/cgi-bin/contactForm.py \
-  -H "Content-Type: text/plain" \                       
-  --data-binary @-
 
-(echo -n "Hello "; yes "World" | head -n 10) | curl -X POST http://localhost:8080/cgi-bin/contactForm.py \
-  -H "Content-Type: text/plain" \
-  --data-binary @-
+415 - Unsupported media type 
+Fonctionne :(OK)
+curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -H "Content-Type: application/x-www-form-urlencoded" -d "name=ntest&email=etest%40test.com&message=mtest"
+
+provoque err 415 : (Err 415 OK)
+curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -H "Content-Type: unknownType" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 7. 500 Internal Server Error (500 - Erreur interne du serveur)
 Situations possibles :
@@ -197,7 +177,9 @@ Problème de permissions : Le serveur n'a pas les permissions nécessaires pour 
 8. 501 Not Implemented (501 - Fonctionnalité non implémentée)
 Situations possibles :
 
-Méthode non implémentée : Le client utilise une méthode HTTP que le serveur ne reconnaît pas du tout, comme TRACE ou CONNECT, et le serveur n'a pas de traitement pour cette méthode.
+Méthode non implémentée : Le client utilise une méthode HTTP que le serveur ne reconnaît pas du tout, comme PUT et le serveur n'a pas de traitement pour cette méthode.
+curl -X PUT http://127.0.0.1:8080/
+curl -X TRACE http://127.0.0.1:8080/
 
 Fonctionnalité non supportée : Le client demande une fonctionnalité que le serveur ne supporte pas, comme une certaine version du protocole HTTP.
 

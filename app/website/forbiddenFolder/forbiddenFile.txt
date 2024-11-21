@@ -1,0 +1,1 @@
+this file can be hidden by using chmod 000 on itself, try to access it after that will cause 403 error

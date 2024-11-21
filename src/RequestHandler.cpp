@@ -11,6 +11,7 @@
 #include "../includes/Utils.hpp"
 #include "../includes/Error.hpp"
 #include "../includes/Color_Macros.hpp"
+#include "../includes/Utils.hpp"
 #include <cerrno>
 #include <string.h>
 
@@ -562,7 +563,10 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 
     // Build the absolute path to the file
     std::string fullPath = root + requestPath;
-    std::cout << "Attempting to delete file: " << fullPath << std::endl; // Debug
+    // Replace special chars written in the path like : %20 for space
+    decodeURI(fullPath);
+    
+    std::cout << "Info: Attempting to delete file: " << fullPath << std::endl; // Debug
 
     // Verify if path is secure
     if (!isPathSecure(root, fullPath)) {
@@ -577,7 +581,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
             response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
             return response;
         } else {
-            std::cerr << "RequestHandler::handleDeletion : Error accessing file: " << strerror(errno) << std::endl;
+            std::cerr << "Error Deletion : Error accessing file: " << strerror(errno) << std::endl;
             response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
             return response;
         }
@@ -585,21 +589,21 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 
     // Verify if it is a regular file
     if (!S_ISREG(fileStat.st_mode)) {
-        std::cerr << "RequestHandler::handleDeletion : Target is not a regular file." << std::endl;
+        std::cerr << "Error Deletion : Target is not a regular file." << std::endl;
         response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
     // Verify if we are allowed to delete this file
     if (access(fullPath.c_str(), W_OK) != 0) {
-        std::cerr << "RequestHandler::handleDeletion : No permission to delete the file: " << strerror(errno) << std::endl;
+        std::cerr << "Error Deletion : No permission to delete the file: " << strerror(errno) << std::endl;
         response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
         return response;
     }
 
     // Try to delete the file
     if (unlink(fullPath.c_str()) != 0) {
-        std::cerr << "RequestHandler::handleDeletion : Failed to delete file: " << strerror(errno) << std::endl;
+        std::cerr << "Error Deletion : Failed to delete file: " << strerror(errno) << std::endl;
         response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
         return response;
     }
@@ -615,7 +619,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 
 
 HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, const std::string& requestPath) const {
-    std::cout << RED << "RequestHandler::generateAutoIndex" << RESET << std::endl; // test
+    // std::cout << RED << "RequestHandler::generateAutoIndex" << RESET << std::endl; // test
     std::stringstream ss;
 
     

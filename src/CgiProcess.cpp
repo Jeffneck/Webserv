@@ -28,7 +28,6 @@ CgiProcess::~CgiProcess() {
     if (pipefd_[0] != -1) close(pipefd_[0]);
     if (pipefd_[1] != -1) close(pipefd_[1]);
     if (pid_ > 0) waitpid(pid_, &cgiExitStatus_, WNOHANG);
-    std::cout << "Waitpid destruct"<< cgiExitStatus_ << std::endl;
 }
 
 bool CgiProcess::start() {

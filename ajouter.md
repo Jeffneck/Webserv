@@ -1,3 +1,13 @@
+Ajouter un request timeout (err 408) si le client met trop de temps a televerser un fichier prob
+void flushSocket(int sockfd) {
+    char buffer[1024];  // Buffer temporaire pour lire les données
+
+    // Lire et ignorer les données présentes dans le tampon du socket
+    while (recv(sockfd, buffer, sizeof(buffer), MSG_DONTWAIT) > 0) {
+        // Continue à lire tant qu'il y a des données dans le tampon
+    }
+}
+
 Retour d' erreur du cgi pas recup
 
 lorsque de nombreux serveurs, on dirait que getRoot n' est pas pris en compte
