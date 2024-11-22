@@ -45,7 +45,8 @@ private:
     HttpResponse handleFileUpload(const HttpRequest& request, const Location* location, const Server* server) const;
     HttpResponse handleDeletion(const HttpRequest& request, const Location* location, const Server* server) const;
     
-    bool verifyFile(const Server* server, const Location* location, const std::string& fullPath, HttpResponse& response) const;
+    std::string getFileFullPath(const Server* server, const Location* location, const HttpRequest& request) const;
+    void verifyFile(const std::string& fullPath, const bool tryOpen) const;
     bool isPathSecure(const std::string& root, const std::string& fullPath) const;
 
 

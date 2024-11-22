@@ -90,46 +90,42 @@ const Location* RequestHandler::selectLocation(const Server* server, const HttpR
     return matchedLocation; // NULL is not an error here
 }
 
-//utiliser throw ici
-bool RequestHandler::verifyFile(const Server* server, const Location* location, const std::string& fullPath, HttpResponse& response) const {
+void RequestHandler::verifyFile(const std::string& fullPath, const bool tryOpen) const {
     // Vérification de la sécurité du chemin
-    if (!isPathSecure(server->getRoot(), fullPath)) {
-        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-        return false;
-    }
+    // if (!isPathSecure(server->getRoot(), fullPath)) {
+    //     throw HttpException(403, "Forbidden: Path traversal detected");
+    // }
 
     // Vérification de l'existence et de l'accessibilité du fichier
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
         if (errno == EACCES) {
-            response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+            throw HttpException(403, "Forbidden: File access denied");
         } else if (errno == ENOENT || errno == ENOTDIR) {
-            response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
+            throw HttpException(404, "Not Found: File not found or not a directory");
         } else {
-            response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
+            throw HttpException(500, "Internal Server Error: Unable to access file");
         }
-        return false;
     }
 
     // Vérification que c'est un fichier régulier
     if (!S_ISREG(fileStat.st_mode)) {
-        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-        return false;
+        throw HttpException(403, "Forbidden: Not a regular file");
     }
 
     // Vérification de l'ouverture du fichier
-    std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
-    if (!file.is_open()) {
-        if (errno == EACCES) {
-            response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-        } else {
-            response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
+    if(tryOpen == true)
+    {
+        std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
+        if (!file.is_open()) {
+            if (errno == EACCES) {
+                throw HttpException(403, "Forbidden: Unable to open file");
+            } else {
+                throw HttpException(404, "Not Found: File could not be opened");
+            }
         }
-        return false;
+        file.close();
     }
-    file.close();
-
-    return true; // Le fichier est valide
 }
 
 void RequestHandler::process(const Server* server, const Location* location, const HttpRequest& request, RequestResult& result) const {
@@ -227,12 +223,15 @@ void RequestHandler::process(const Server* server, const Location* location, con
     // Handle CGI
     if (location && !location->getCgiExtension().empty() && location->getCGIEnable() && endsWith(request.getPath(), location->getCgiExtension())) {
         try {
+            //verify if the file is existent and can be given to the cgi
+            std::string fileFullPath = getFileFullPath(server, location, request); 
+            verifyFile(fileFullPath, true);
+
             CgiProcess* cgiProcess = startCgiProcess(server, location, request);
             result.cgiProcess = cgiProcess;
             result.responseReady = false;
             return;
         } catch (const HttpException& e) {
-            // Gérer l'erreur, par exemple renvoyer la réponse HTTP avec le code d'erreur et le message
             result.response = handleError(e.statusCode, getErrorPageFullPath(e.statusCode, location, server));
             result.responseReady = true;
             return;
@@ -265,58 +264,6 @@ void RequestHandler::process(const Server* server, const Location* location, con
     result.response.setHeader("Allow", join(allowedMethods, ", "));
     result.responseReady = true;
 }
-
-// CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location* location , const HttpRequest& request) const {
-//     char cwd[PATH_MAX];
-
-//     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-//         // std::cerr << RED <<"RequestHandler::startCgiProcess : Error getcwd: " << strerror(errno) << RESET << std::endl;
-//         return NULL; // NULL = Error
-//     }
-//     //construct path
-//     std::string scriptWorkingDir = cwd ;
-//     scriptWorkingDir += "/" ;
-//     scriptWorkingDir += server->getRoot();
-//     if (location){
-//         scriptWorkingDir += "/" ;
-//         scriptWorkingDir += location->getPath();
-//         scriptWorkingDir += "/";
-//     }
-//     std::string relativeFilePath = request.getPath();
-//     if (location && relativeFilePath.compare(0, location->getPath().length(), location->getPath()) == 0) {
-//         relativeFilePath.erase(0, location->getPath().length());
-//     }
-//     relativeFilePath = "./" + relativeFilePath;
-
-//     std::map<std::string, std::string> params;
-//     if (request.getMethod() == "GET") {
-//         // Extract params from query string
-//         params = createScriptParamsGET(request.getQueryString());
-//     } else if (request.getMethod() == "POST") {
-//         std::string contentType = request.getHeader("content-type");
-//         if (contentType == "application/x-www-form-urlencoded") {
-//             // Extract params fro the body of the HTTP request
-//             params = createScriptParamsPOST(request.getBody());
-//         } else {
-//             std::cerr << "Content Type allowed to POST Forms is 'application/x-www-form-urlencoded'" << contentType << std::endl;
-//             return NULL;
-//         }
-//     } else {
-//         std::cerr << "HTTP Method not allowed" << request.getMethod() << std::endl;
-//         return NULL;
-//     }
-
-//     std::vector<std::string> envVars;
-//     setupScriptEnvp(request, relativeFilePath, envVars);
-
-//     CgiProcess* cgiProcess = new CgiProcess(scriptWorkingDir, relativeFilePath, params, envVars);
-//     if (!cgiProcess->start()) {
-//         delete cgiProcess;
-//         return NULL;
-//     }
-//     return cgiProcess;
-// }
-
 
 CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location* location, const HttpRequest& request) const {
     char cwd[PATH_MAX];
@@ -434,7 +381,7 @@ std::map<std::string, std::string> RequestHandler::createScriptParamsPOST(const 
         last_pos = amp_pos + 1;
     }
 
-    // Traiter le dernier paramètre
+    // Treat last parameter
     std::string key_value_pair = postBody.substr(last_pos);
     if (!key_value_pair.empty()) {
         std::string::size_type eq_pos = key_value_pair.find('=');
@@ -450,37 +397,25 @@ std::map<std::string, std::string> RequestHandler::createScriptParamsPOST(const 
     return params;
 }
 
+std::string RequestHandler::getFileFullPath(const Server* server, const Location* location, const HttpRequest& request) const {
 
-HttpResponse RequestHandler::serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const {
-    HttpResponse response;
-
-    // Determine root directory and index file
     std::string root = server->getRoot();
-    std::string index = server->getIndex();
+    // std::string index = server->getIndex();
 
     if (location) {
         root = location->getRoot();
-        index = location->getIndex();
+        // index = location->getIndex();
     }
 
-    // Build the full path to the requested file
+    // Construire le chemin de la requête
     std::string requestPath = request.getPath();
 
-    // Check that requestPath is not empty
+    // Vérifier que requestPath n'est pas vide
     if (requestPath.empty()) {
         requestPath = "/";
     }
 
-    // Handle the case where the path ends with a '/'.
-    if (requestPath[requestPath.size() - 1] == '/') {
-        if (location && !location->getIndexIsSet() && location->getAutoIndex()) {
-            // Generate auto-index if index is not defined and auto-index is enabled
-            return generateAutoIndex(root + requestPath, requestPath);
-        }
-        requestPath += index;
-    }
-
-    // Remove the location path from the requestPath if root is defined in the location
+    // Supprimer le chemin de location si root est défini dans location
     if (location && location->getRootIsSet()) {
         std::string to_remove = location->getPath();
         size_t pos = requestPath.find(to_remove);
@@ -489,34 +424,39 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         }
     }
 
-    // Build complete path to file
-    std::string fullPath = root + requestPath;
-    std::cout << "Serving file: " << fullPath << std::endl;
+    // Construire le chemin complet vers le fichier
+    // std::cout << GREEN << root << "'"<< requestPath<< RESET<< std::endl;//debug
+    return (root + requestPath);
+}
 
-    // Check path safety
-    if (!isPathSecure(root, fullPath)) {
-        return handleError(403, getErrorPageFullPath(403, location, server));
-    }
+HttpResponse RequestHandler::serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const {
+    HttpResponse response;
+    //get filefullpath---------
+    std::string fileFullPath = getFileFullPath(server, location, request);
 
-    // Check that the file exists and is accessible
-    struct stat fileStat;
-    if (stat(fullPath.c_str(), &fileStat) != 0) {
-        if (errno == EACCES) {
+    // Handle the case where the path ends with a '/'
+    if (fileFullPath[fileFullPath.size() - 1] == '/') {
+        // if index is not defined and auto-index is enabled = Generate auto-index 
+        if (location && !location->getIndexIsSet() && location->getAutoIndex()) {
+            return generateAutoIndex(fileFullPath, request.getPath());
+        } 
+        // if index is defined = Serve Index file 
+        else if(location && location->getIndexIsSet()){
+            fileFullPath += location->getIndex();
+        } else{
             return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-        } else if (errno == ENOENT || errno == ENOTDIR) {
-            return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
-        } else {
-            return handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
         }
     }
 
-    // Check that it's a regular file
-    if (!S_ISREG(fileStat.st_mode)) {
-        return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+    //verify the file
+    try{ 
+        verifyFile(fileFullPath, false);
+    } catch (const HttpException& e) {
+        return handleError(e.statusCode, getErrorPageFullPath(e.statusCode, location, server)); // Forbidde
     }
 
-    // Open the file
-    std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
+    // Open the file 
+    std::ifstream file(fileFullPath.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open()) {
         if (errno == EACCES) {
             return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
@@ -525,7 +465,7 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
         }
     }
 
-    // Read content
+    // Read fle content
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string fileContent = buffer.str();
@@ -536,9 +476,9 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
     response.setBody(fileContent);
 
     // Define Content-Type according to file extension
-    size_t dotPos = fullPath.find_last_of('.');
+    size_t dotPos = fileFullPath.find_last_of('.');
     if (dotPos != std::string::npos) {
-        std::string extension = fullPath.substr(dotPos + 1);
+        std::string extension = fileFullPath.substr(dotPos + 1);
         std::string contentType = getMimeType(extension);
         if (!contentType.empty()) {
             response.setHeader("Content-Type", contentType);
@@ -548,6 +488,107 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
 
     return response;
 }
+
+
+
+// HttpResponse RequestHandler::serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const {
+//     HttpResponse response;
+//     //get filefullpath---------
+//     // Determine root directory and index file
+//     std::string root = server->getRoot();
+//     std::string index = server->getIndex();
+
+//     if (location) {
+//         root = location->getRoot();
+//         index = location->getIndex();
+//     }
+
+//     // Build the full path to the requested file
+//     std::string requestPath = request.getPath();
+
+//     // Check that requestPath is not empty
+//     if (requestPath.empty()) {
+//         requestPath = "/";
+//     }
+
+//     // Handle the case where the path ends with a '/'.
+//     if (requestPath[requestPath.size() - 1] == '/') {
+//         if (location && !location->getIndexIsSet() && location->getAutoIndex()) {
+//             // Generate auto-index if index is not defined and auto-index is enabled
+//             return generateAutoIndex(root + requestPath, requestPath);
+//         }
+//         requestPath += index;
+//     }
+
+//     // Remove the location path from the requestPath if root is defined in the location
+//     if (location && location->getRootIsSet()) {
+//         std::string to_remove = location->getPath();
+//         size_t pos = requestPath.find(to_remove);
+//         if (pos != std::string::npos) {
+//             requestPath.erase(pos, to_remove.length());
+//         }
+//     }
+
+//     // Build complete path to file
+//     std::string fullPath = root + requestPath;
+//     std::cout << "Serving file: " << fullPath << std::endl;
+
+//     //verify file
+//     // Check path safety
+//     if (!isPathSecure(root, fullPath)) {
+//         return handleError(403, getErrorPageFullPath(403, location, server));
+//     }
+
+//     // Check that the file exists and is accessible
+//     struct stat fileStat;
+//     if (stat(fullPath.c_str(), &fileStat) != 0) {
+//         if (errno == EACCES) {
+//             return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+//         } else if (errno == ENOENT || errno == ENOTDIR) {
+//             return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
+//         } else {
+//             return handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
+//         }
+//     }
+
+//     // Check that it's a regular file
+//     if (!S_ISREG(fileStat.st_mode)) {
+//         return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+//     }
+
+//     // Open the file
+//     std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
+//     if (!file.is_open()) {
+//         if (errno == EACCES) {
+//             return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+//         } else {
+//             return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
+//         }
+//     }
+
+//     // Read content
+//     std::stringstream buffer;
+//     buffer << file.rdbuf();
+//     std::string fileContent = buffer.str();
+//     file.close();
+
+//     // Define response headers and body
+//     response.setStatusCode(200);
+//     response.setBody(fileContent);
+
+//     // Define Content-Type according to file extension
+//     size_t dotPos = fullPath.find_last_of('.');
+//     if (dotPos != std::string::npos) {
+//         std::string extension = fullPath.substr(dotPos + 1);
+//         std::string contentType = getMimeType(extension);
+//         if (!contentType.empty()) {
+//             response.setHeader("Content-Type", contentType);
+//             response.setHeader("Connection", "close");
+//         }
+//     }
+
+//     return response;
+// }
 
 /*
  * This function handles file uploads from HTTP requests with the "multipart/form-data" content type.
