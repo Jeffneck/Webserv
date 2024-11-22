@@ -204,7 +204,7 @@ void WebServer::checkCgiTimeouts() {
                 it = activeCgiSockets_.erase(it);
             } else if (dataSocket->cgiProcessHasTimedOut()) {
                 // CGI process timed out
-                dataSocket->terminateCgiProcess();
+                dataSocket->terminateCgiProcess(504);
                 it = activeCgiSockets_.erase(it);
             } else {
                 // CGI process still running properly

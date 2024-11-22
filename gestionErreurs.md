@@ -160,19 +160,28 @@ curl http://127.0.0.1:8080/URItooloooooooooooooooooooooooooooooooooooooooooooooo
 
 415 - Unsupported media type 
 Fonctionne :(OK)
-curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -H "Content-Type: application/x-www-form-urlencoded" -d "name=ntest&email=etest%40test.com&message=mtest"
+curl -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -H "Content-Type: application/x-www-form-urlencoded" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 provoque err 415 : (Err 415 OK)
-curl -v -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -H "Content-Type: unknownType" -d "name=ntest&email=etest%40test.com&message=mtest"
+curl -X POST http://127.0.0.1:8080/cgi-bin/contactForm.py -H "Content-Length: 47" -H "Content-Type: unknownType" -d "name=ntest&email=etest%40test.com&message=mtest"
 
 7. 500 Internal Server Error (500 - Erreur interne du serveur)
 Situations possibles :
 
-Erreur dans le code serveur : Une exception non gérée ou un bug dans le code du serveur provoque une panne lors du traitement de la requête.
+Erreur dans le code serveur : le lancement du CGI ne fonctionne pas comme prevu (erreur de pipe/fork/fcntl)
+=> provoquer l' erreur en decommantant return false dans la fonction CgiProcess::start()
+
 
 Échec du CGI : Le script Python exécuté via execve plante, retourne une erreur ou produit une sortie non conforme, ce qui empêche le serveur de traiter la réponse correctement.
+curl http://127.0.0.1:8080/cgi-bin/error.py
 
 Problème de permissions : Le serveur n'a pas les permissions nécessaires pour exécuter le script CGI ou accéder à une ressource requise.
+chmod 000 ./app/website/cgi-bin/hello.py && curl http://127.0.0.1:8080/cgi-bin/hello.py && chmod 777 ./app/website/cgi-bin/hello.py
+
+
+
+
+
 
 8. 501 Not Implemented (501 - Fonctionnalité non implémentée)
 Situations possibles :
@@ -186,9 +195,19 @@ Fonctionnalité non supportée : Le client demande une fonctionnalité que le se
 9. 502 Bad Gateway (502 - Mauvaise passerelle)
 Situations possibles :
 
-Échec de communication avec le CGI : Si votre serveur agit comme une passerelle vers le script CGI et que la communication échoue (par exemple, le script ne se lance pas correctement), vous pourriez renvoyer cette erreur.
+Le programme se termine avec un code d' erreur 
+curl http://127.0.0.1:8080/cgi-bin/error.py
 
-Sortie invalide du CGI : Le script CGI renvoie une réponse mal formée que le serveur ne peut pas interpréter.
+Le programme est kill par un signal
+curl http://127.0.0.1:8080/cgi-bin/killMe.py
+
+On envoie 
+
+
+
+Échec de communication avec le CGI : Si votre serveur agit comme une passerelle vers le script CGI et que la communication échoue (par exemple, le script tourne indefiniment)
+
+
 
 10. 503 Service Unavailable (503 - Service indisponible)
 Situations possibles :
@@ -199,12 +218,25 @@ Surcharge du serveur : Le serveur est trop occupé pour traiter la requête en r
 
 Limitation de ressources : Les ressources système (comme la mémoire ou le CPU) sont insuffisantes pour traiter la requête.
 
+
+Python n'est pas disponible ???????????????
+
+
 11. 504 Gateway Timeout (504 - Délai d'attente de la passerelle)
 Situations possibles :
 
 Timeout avec le CGI : Le script Python appelé via execve met trop de temps à répondre, et le serveur atteint le délai maximum configuré pour attendre une réponse.
+curl http://127.0.0.1:8080/cgi-bin/infinite.py
 
-Problème de communication inter-processus : Si le serveur attend une réponse d'un processus externe (comme le CGI) et que cette réponse n'arrive pas à temps.
+
+
+
+
+
+
+
+
+
 
 Autres situations potentielles :
 413 Payload Too Large (413 - Entité de la requête trop grande)

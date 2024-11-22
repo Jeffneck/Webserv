@@ -33,6 +33,9 @@ CgiProcess::~CgiProcess() {
 bool CgiProcess::start() {
     // std::cout << "CgiProcess::start : path absolu repertoire : " << scriptWorkingDir_ << " path relatif fichier : " << relativeFilePath_ << std::endl;
 
+    //Simulate an error of pipe/fork/fcntl here to make err 500 happen
+    // return false; //remove this to make the function works normally
+
     if (pipe(pipefd_) == -1) {
         std::cerr << "Error : CGI pipe failed: " << strerror(errno) << std::endl;
         return false;

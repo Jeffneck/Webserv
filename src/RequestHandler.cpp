@@ -90,6 +90,48 @@ const Location* RequestHandler::selectLocation(const Server* server, const HttpR
     return matchedLocation; // NULL is not an error here
 }
 
+//utiliser throw ici
+bool RequestHandler::verifyFile(const Server* server, const Location* location, const std::string& fullPath, HttpResponse& response) const {
+    // Vérification de la sécurité du chemin
+    if (!isPathSecure(server->getRoot(), fullPath)) {
+        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+        return false;
+    }
+
+    // Vérification de l'existence et de l'accessibilité du fichier
+    struct stat fileStat;
+    if (stat(fullPath.c_str(), &fileStat) != 0) {
+        if (errno == EACCES) {
+            response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+        } else if (errno == ENOENT || errno == ENOTDIR) {
+            response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
+        } else {
+            response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
+        }
+        return false;
+    }
+
+    // Vérification que c'est un fichier régulier
+    if (!S_ISREG(fileStat.st_mode)) {
+        response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+        return false;
+    }
+
+    // Vérification de l'ouverture du fichier
+    std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
+    if (!file.is_open()) {
+        if (errno == EACCES) {
+            response = handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
+        } else {
+            response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
+        }
+        return false;
+    }
+    file.close();
+
+    return true; // Le fichier est valide
+}
+
 void RequestHandler::process(const Server* server, const Location* location, const HttpRequest& request, RequestResult& result) const {
     // Error if Server has not been found
     if (!server) {
@@ -168,15 +210,30 @@ void RequestHandler::process(const Server* server, const Location* location, con
         return;
     }
 
+    // // Handle CGI
+    // if (location && !location->getCgiExtension().empty() && location->getCGIEnable() && endsWith(request.getPath(), location->getCgiExtension())) {
+    //     CgiProcess* cgiProcess = startCgiProcess(server, location, request);
+    //     if (cgiProcess) {
+    //         result.cgiProcess = cgiProcess;
+    //         result.responseReady = false;
+    //         return;
+    //     } else {
+    //         result.response = handleError(500, getErrorPageFullPath(500, location, server));
+    //         result.responseReady = true;
+    //         return;
+    //     }
+    // }
+
     // Handle CGI
     if (location && !location->getCgiExtension().empty() && location->getCGIEnable() && endsWith(request.getPath(), location->getCgiExtension())) {
-        CgiProcess* cgiProcess = startCgiProcess(server, location, request);
-        if (cgiProcess) {
+        try {
+            CgiProcess* cgiProcess = startCgiProcess(server, location, request);
             result.cgiProcess = cgiProcess;
             result.responseReady = false;
             return;
-        } else {
-            result.response = handleError(500, getErrorPageFullPath(500, location, server));
+        } catch (const HttpException& e) {
+            // Gérer l'erreur, par exemple renvoyer la réponse HTTP avec le code d'erreur et le message
+            result.response = handleError(e.statusCode, getErrorPageFullPath(e.statusCode, location, server));
             result.responseReady = true;
             return;
         }
@@ -209,44 +266,99 @@ void RequestHandler::process(const Server* server, const Location* location, con
     result.responseReady = true;
 }
 
-CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location* location , const HttpRequest& request) const {
+// CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location* location , const HttpRequest& request) const {
+//     char cwd[PATH_MAX];
+
+//     if (getcwd(cwd, sizeof(cwd)) == NULL) {
+//         // std::cerr << RED <<"RequestHandler::startCgiProcess : Error getcwd: " << strerror(errno) << RESET << std::endl;
+//         return NULL; // NULL = Error
+//     }
+//     //construct path
+//     std::string scriptWorkingDir = cwd ;
+//     scriptWorkingDir += "/" ;
+//     scriptWorkingDir += server->getRoot();
+//     if (location){
+//         scriptWorkingDir += "/" ;
+//         scriptWorkingDir += location->getPath();
+//         scriptWorkingDir += "/";
+//     }
+//     std::string relativeFilePath = request.getPath();
+//     if (location && relativeFilePath.compare(0, location->getPath().length(), location->getPath()) == 0) {
+//         relativeFilePath.erase(0, location->getPath().length());
+//     }
+//     relativeFilePath = "./" + relativeFilePath;
+
+//     std::map<std::string, std::string> params;
+//     if (request.getMethod() == "GET") {
+//         // Extract params from query string
+//         params = createScriptParamsGET(request.getQueryString());
+//     } else if (request.getMethod() == "POST") {
+//         std::string contentType = request.getHeader("content-type");
+//         if (contentType == "application/x-www-form-urlencoded") {
+//             // Extract params fro the body of the HTTP request
+//             params = createScriptParamsPOST(request.getBody());
+//         } else {
+//             std::cerr << "Content Type allowed to POST Forms is 'application/x-www-form-urlencoded'" << contentType << std::endl;
+//             return NULL;
+//         }
+//     } else {
+//         std::cerr << "HTTP Method not allowed" << request.getMethod() << std::endl;
+//         return NULL;
+//     }
+
+//     std::vector<std::string> envVars;
+//     setupScriptEnvp(request, relativeFilePath, envVars);
+
+//     CgiProcess* cgiProcess = new CgiProcess(scriptWorkingDir, relativeFilePath, params, envVars);
+//     if (!cgiProcess->start()) {
+//         delete cgiProcess;
+//         return NULL;
+//     }
+//     return cgiProcess;
+// }
+
+
+CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location* location, const HttpRequest& request) const {
     char cwd[PATH_MAX];
 
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        // std::cerr << RED <<"RequestHandler::startCgiProcess : Error getcwd: " << strerror(errno) << RESET << std::endl;
-        return NULL; // NULL = Error
+        // Erreur interne, impossible d'obtenir le répertoire courant
+        throw HttpException(500, "Internal Server Error: Unable to get current working directory");
     }
-    //construct path
-    std::string scriptWorkingDir = cwd ;
+
+    // Construction du chemin du script
+    std::string scriptWorkingDir = cwd;
     scriptWorkingDir += "/" ;
     scriptWorkingDir += server->getRoot();
-    if (location){
-        scriptWorkingDir += "/" ;
+    if (location) {
+        scriptWorkingDir += "/";
         scriptWorkingDir += location->getPath();
         scriptWorkingDir += "/";
     }
+
     std::string relativeFilePath = request.getPath();
     if (location && relativeFilePath.compare(0, location->getPath().length(), location->getPath()) == 0) {
         relativeFilePath.erase(0, location->getPath().length());
     }
     relativeFilePath = "./" + relativeFilePath;
 
+    // Extraction des paramètres
     std::map<std::string, std::string> params;
     if (request.getMethod() == "GET") {
-        // Extract params from query string
+        // Extraction des paramètres depuis la query string
         params = createScriptParamsGET(request.getQueryString());
     } else if (request.getMethod() == "POST") {
         std::string contentType = request.getHeader("content-type");
         if (contentType == "application/x-www-form-urlencoded") {
-            // Extract params fro the body of the HTTP request
+            // Extraction des paramètres depuis le corps de la requête
             params = createScriptParamsPOST(request.getBody());
         } else {
-            std::cerr << "Content Type allowed to POST Forms is 'application/x-www-form-urlencoded'" << contentType << std::endl;
-            return NULL;
+            // Type de contenu non supporté
+            throw HttpException(415, "Unsupported Media Type: " + contentType);
         }
     } else {
-        std::cerr << "HTTP Method not allowed" << request.getMethod() << std::endl;
-        return NULL;
+        // Méthode HTTP non autorisée
+        throw HttpException(405, "Method Not Allowed: " + request.getMethod());
     }
 
     std::vector<std::string> envVars;
@@ -255,7 +367,7 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
     CgiProcess* cgiProcess = new CgiProcess(scriptWorkingDir, relativeFilePath, params, envVars);
     if (!cgiProcess->start()) {
         delete cgiProcess;
-        return NULL;
+        throw HttpException(500, "Internal Server Error: Failed to start CGI process");
     }
     return cgiProcess;
 }

@@ -192,14 +192,14 @@ bool DataSocket::readFromCgiPipe() {
     if (bytesRead > 0) {
         lastActivityTime_ = time(NULL);
         cgiOutputBuffer_.append(buffer, bytesRead);
-        std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
+        // std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
         return true;
     } else if (bytesRead == 0) {
         handleCgiProcessExitStatus();
         return false;
     }else{
         std::cerr << "Error occured while reading on cgi Pipe" << std::endl;
-        terminateCgiProcess();
+        terminateCgiProcess(502);
         return false;
     }
 }
@@ -256,12 +256,12 @@ bool DataSocket::cgiProcessHasTimedOut() const {
     return false;
 }
 
-void DataSocket::terminateCgiProcess() {
+void DataSocket::terminateCgiProcess(int errorCode) {
     if (cgiProcess_) {
         cgiProcess_->terminate();
         closeCgiPipe();
         // Envoyer une réponse d'erreur au client
-        HttpResponse response = handleError(500, getAssociatedServer()->getErrorPageFullPath(500));
+        HttpResponse response = handleError(errorCode, getAssociatedServer()->getErrorPageFullPath(errorCode));
         sendBuffer_ = response.generateResponse();
         sendBufferOffset_ = 0;
         cgiOutputBuffer_.clear();

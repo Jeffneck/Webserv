@@ -37,7 +37,7 @@ public:
 
     bool cgiProcessIsRunning() const;
     bool cgiProcessHasTimedOut() const;
-    void terminateCgiProcess();
+    void terminateCgiProcess(int errorCode);
 
 
 private:

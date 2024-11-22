@@ -10,6 +10,8 @@ void flushSocket(int sockfd) {
 
 Retour d' erreur du cgi pas recup
 
+rechercher http://127.0.0.1:8080/cgi-bin/a.py provoque err 500 au lieu de 404
+
 lorsque de nombreux serveurs, on dirait que getRoot n' est pas pris en compte
 
 verif les .py dans autre chose que la bonne location
