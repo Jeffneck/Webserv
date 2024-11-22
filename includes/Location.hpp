@@ -7,13 +7,40 @@
 
 class Server; // Forward declaration
 
+
+/**
+ * @class Location
+ * 
+ * The `Location` class represents a specific location or directory block within a server's configuration. 
+ * It is used to define how requests for a specific path should be handled. This class allows you to set various 
+ * parameters related to the handling of requests for that path, such as allowed methods, redirections, 
+ * CGI configuration, file upload settings, and error pages.
+ * 
+ * - **Path Management**: The class allows setting and getting the path that the location block corresponds to.
+ * 
+ * - **Method Handling**: It enables the configuration of allowed HTTP methods (e.g., GET, POST) for requests 
+ *   to that location.
+ * 
+ * - **Redirection and Indexing**: The class supports setting up redirections and defining the index file 
+ *   for the location. It also allows enabling or disabling automatic directory indexing.
+ * 
+ * - **CGI and Uploads**: The location can be configured to handle CGI requests and file uploads with custom 
+ *   settings for the upload directory and maximum body size.
+ * 
+ * - **Error Pages**: The class allows defining custom error pages for specific HTTP status codes, allowing 
+ *   different error messages or pages to be displayed for different types of errors.
+ * 
+ * This class is an important component in the server configuration, enabling fine-grained control over how 
+ * different paths or locations are handled within the server, including the types of requests that can be 
+ * processed, how errors are managed, and how files are served or uploaded.
+ */
+
 class Location
 {
 public:
     Location(const Server &server, const std::string &path);
     ~Location();
 
-    // Méthodes pour accéder et modifier les directives de la location
     void setPath(const std::string &path);
     const std::string &getPath() const;
 
@@ -61,20 +88,21 @@ public:
     void displayLocation() const;
 
 private:
-    const Server &server_; // Référence au Server parent
+    // Reference to the parent server
+    const Server &server_; 
 
-    // Indicateurs pour savoir si les valeurs sont définies localement
+    // Indicators of whether values are defined locally
     bool clientMaxBodySizeIsSet_;
     bool rootIsSet_;
     bool indexIsSet_;
 
-    // Directives pouvant être héritées
+    // Inheritable directives
     size_t clientMaxBodySize_;
     std::string root_;
     std::string index_;
     std::map<int, std::string> errorPages_;
 
-    // Directives spécifiques à la location
+    // Specific directives (=that can be only found in location context)
     std::string path_;
     std::vector<std::string> allowedMethods_;
     std::string redirection_;

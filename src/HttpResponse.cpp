@@ -71,79 +71,14 @@ std::string HttpResponse::getDefaultReasonPhrase(int code) const {
         case 404: return "Not Found";
         case 405: return "Method not Allowed";
         case 408: return "Request Timeout";
-        case 409: return "Conflict";//pas implem
-        case 410: return "Gone";//pas implem
-        case 411: return "Length Required";//pour les requetes POST HTTP request
-        case 414: return "URI Too Long";//HTTP request
+        case 411: return "Length Required";
+        case 414: return "URI Too Long";
         case 415: return "Unsupported Media Type";
         case 500: return "Internal Server Error";
-        case 501: return "Not Implemented"; //telecharger et servir des fichiers sup a 3 MO
+        case 501: return "Not Implemented";
         case 502: return "Bad Gateway";
-        case 503: return "Service Unavailable";
         case 504: return "Gateway Timeout";
         case 505: return "HTTP Version Not Supported";
         default:  return "OK";
     }
 }
-/*
-1. Codes de succès (2xx)
-Ces codes indiquent que la requête a été traitée avec succès.
-
-200 OK : La requête a réussi (GET, POST, DELETE). Utilisé lorsque le serveur retourne une réponse réussie pour une requête GET, traite une requête POST correctement, ou supprime une ressource pour une requête DELETE.
-
-201 Created : Utilisé lorsque une ressource a été créée avec succès à la suite d'une requête POST (par exemple, après le téléversement d'un fichier).
-
-204 No Content : Utilisé lorsque la requête a réussi, mais qu'il n'y a pas de contenu à renvoyer dans la réponse. Courant pour des requêtes DELETE réussies.
-
-206 Partial Content : Ce code est utilisé dans le cas où le client demande une partie d'une ressource (par exemple, une requête GET avec des en-têtes de range, utile pour des fichiers volumineux).
-
-2. Redirections (3xx)
-Ces codes indiquent que le client doit effectuer une action supplémentaire pour compléter la requête.
-
-301 Moved Permanently : Utilisé si une ressource demandée a été déplacée de façon permanente. Le client est invité à utiliser l'URL fournie dans l'en-tête Location pour les futures requêtes.
-
-302 Found : Utilisé pour rediriger temporairement une requête vers une autre URL.
-
-304 Not Modified : Utilisé pour indiquer au client que la version en cache de la ressource est encore valide, donc il n'est pas nécessaire de renvoyer les données.
-
-3. Erreurs du client (4xx)
-Ces codes sont utilisés lorsque le client a fait une erreur dans sa requête.
-
-400 Bad Request : La requête du client est mal formée ou invalide (par exemple, si des paramètres obligatoires sont manquants ou mal structurés).
-
-401 Unauthorized : Utilisé lorsque l'accès à une ressource nécessite une authentification et que celle-ci n'a pas été fournie ou est incorrecte.
-
-403 Forbidden : Le serveur comprend la requête, mais refuse de la traiter (par exemple, une requête DELETE sur une ressource protégée ou interdite).
-
-404 Not Found : Utilisé lorsque la ressource demandée n'existe pas sur le serveur (cas d'un GET, POST ou DELETE sur une URL inexistante).
-
-405 Method Not Allowed : Utilisé lorsque la méthode HTTP utilisée n'est pas autorisée pour la ressource demandée (par exemple, essayer de faire un POST sur une ressource qui ne supporte que GET).
-
-413 Payload Too Large : Utilisé lorsque le client tente de téléverser un fichier ou des données dont la taille dépasse la limite autorisée par le serveur.
-
-415 Unsupported Media Type : Le format du fichier téléversé n'est pas supporté par le serveur (par exemple, tenter d'envoyer un fichier d'un type non autorisé).
-
-418 I'm a teapot : Un code d'état humoristique défini dans la RFC 2324 pour signifier que le serveur est un "théière" et ne peut pas faire du café. Peu utilisé, mais parfois présent comme clin d'œil dans certaines implémentations.
-
-4. Erreurs du serveur (5xx)
-Ces codes indiquent que le serveur a rencontré une erreur interne.
-
-500 Internal Server Error : Utilisé lorsque le serveur rencontre une erreur inattendue lors du traitement de la requête (erreur dans le code CGI, problème d'exécution, etc.).
-
-501 Not Implemented : Le serveur ne prend pas en charge la méthode HTTP utilisée (si, par exemple, DELETE n'est pas implémenté).
-
-502 Bad Gateway : Le serveur, agissant comme un proxy ou une passerelle, a reçu une réponse invalide d'un autre serveur.
-
-503 Service Unavailable : Le serveur est temporairement indisponible, généralement à cause d'une surcharge ou de travaux de maintenance.
-
-504 Gateway Timeout : Utilisé lorsque le serveur, agissant en tant que proxy ou passerelle, n'a pas reçu de réponse à temps d'un serveur en amont.
-
-5. Spécificités pour le téléversement de fichiers et CGI
-Pour le téléversement de fichiers et les CGI, plusieurs codes sont particulièrement pertinents :
-
-413 Payload Too Large : Si le fichier téléversé dépasse la taille maximale autorisée.
-500 Internal Server Error : Si le script CGI échoue ou génère une erreur.
-415 Unsupported Media Type : Si le fichier téléversé a un type MIME non accepté par le serveur.
-201 Created : Si le fichier est téléversé avec succès.
-
-*/

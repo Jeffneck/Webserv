@@ -27,9 +27,25 @@ HttpRequest::HttpRequest()
 HttpRequest::~HttpRequest() {
 }
 
+
+/**
+ * Appends new data to the raw data of the HTTP request.
+ * This function is typically called to add incoming data chunks to the request body.
+ * 
+ * @param data The new data to be appended to the request.
+ */
+
 void HttpRequest::appendData(const std::string& data) {
     rawData_ += data;
 }
+
+
+/**
+ * Checks if the HTTP request is complete.
+ * A request is considered complete if the headers are parsed and the body size matches the content length.
+ * 
+ * @return true if the request is complete, false otherwise.
+ */
 
 bool HttpRequest::isComplete() const {
     if (!headersParsed_) {
@@ -38,6 +54,14 @@ bool HttpRequest::isComplete() const {
 
     return body_.size() >= contentLength_;
 }
+
+
+/**
+ * Parses the HTTP request from the raw data.
+ * The function processes the request line, headers, and body in sequence.
+ * 
+ * @return true if parsing is successful and the request is complete, false if an error occurs.
+ */
 
 bool HttpRequest::parseRequest() {
     std::istringstream stream(rawData_);
@@ -61,6 +85,16 @@ bool HttpRequest::parseRequest() {
     return state_ == COMPLETE;
 }
 
+
+
+/**
+ * Handles the request line (method, path, HTTP version).
+ * It validates and parses the request line, setting the corresponding attributes.
+ * 
+ * @param line The request line to be parsed.
+ * @return true if the request line is successfully parsed, false otherwise.
+ */
+
 bool HttpRequest::handleRequestLine(const std::string& line) {
     if (line == "\r" || line.empty()) {
         // Incomplete Request
@@ -73,6 +107,18 @@ bool HttpRequest::handleRequestLine(const std::string& line) {
     state_ = HEADERS;
     return true;
 }
+
+
+
+
+
+/**
+ * Handles the HTTP headers.
+ * It parses each header line, and once all headers are processed, validates them.
+ * 
+ * @param line The header line to be parsed.
+ * @return true if headers are successfully parsed, false if validation fails.
+ */
 
 bool HttpRequest::handleHeaders(const std::string& line) {
     if (line == "\r" || line.empty()) {
@@ -97,6 +143,17 @@ bool HttpRequest::handleHeaders(const std::string& line) {
     return true;
 }
 
+
+
+
+
+/**
+ * Handles the HTTP body by extracting the content up to the specified content length.
+ * If the body is not complete, the function will return false and require more data to be appended.
+ * 
+ * @return true if the body is fully received, false if more data is needed.
+ */
+
 bool HttpRequest::handleBody() {
     // Calculate the remaining body size to be read
     size_t bodyReceivedLength = rawData_.size() - bodyStartPos_;
@@ -110,6 +167,15 @@ bool HttpRequest::handleBody() {
     }
 }
 
+
+
+
+/**
+ * Validates the HTTP headers by checking the presence of required headers.
+ * Specifically, it checks for the presence of the Host header and validates POST-related headers.
+ * 
+ * @return true if the headers are valid, false otherwise.
+ */
 
 bool HttpRequest::validateHeaders() {
     // Vérifier la présence de l'en-tête Host
@@ -125,6 +191,14 @@ bool HttpRequest::validateHeaders() {
     return true;
 }
 
+
+/**
+ * Validates the Content-Length header for POST requests.
+ * This function also checks for the presence of Transfer-Encoding header (which is not implemented).
+ * 
+ * @return true if the Content-Length is valid, false otherwise.
+ */
+
 bool HttpRequest::validatePOSTContentLength() {
     // Search for 'Transfer-Encoding header: chunked'
     std::map<std::string, std::string>::iterator it = headers_.find("transfer-encoding");
@@ -136,7 +210,7 @@ bool HttpRequest::validatePOSTContentLength() {
         return false;
     }
     
-    // Recherche de l'en-tête Content-Length
+    // Research Content-Length header
     it = headers_.find("content-length");
     if (it == headers_.end()) {
         contentLength_ = 0;
@@ -146,7 +220,7 @@ bool HttpRequest::validatePOSTContentLength() {
         return false;
     }
 
-    // Conversion de la valeur de Content-Length
+    // Convert Content-Length value in an int
     std::istringstream lengthStream(it->second);
     int length;
     if (!(lengthStream >> length) || length < 0) {
@@ -161,6 +235,13 @@ bool HttpRequest::validatePOSTContentLength() {
 }
 
 
+
+/**
+ * Validates the Content-Type header for POST requests.
+ * It checks if the content type is allowed by the server (application/x-www-form-urlencoded or multipart/form-data).
+ * 
+ * @return true if the Content-Type is valid, false otherwise.
+ */
 bool HttpRequest::validatePOSTContentType() {
     // Verify the presence of 'Content-Type' header
     std::map<std::string, std::string>::iterator it = headers_.find("content-type");
@@ -193,6 +274,15 @@ bool HttpRequest::validatePOSTContentType() {
     }
 }
 
+
+
+/**
+ * Parses the HTTP request line, extracting the method, raw path, and HTTP version.
+ * It checks for valid values and sets the corresponding class members.
+ * 
+ * @param line The request line to be parsed (e.g., "GET /path HTTP/1.1").
+ * @return true if the request line is valid, false otherwise.
+ */
 bool HttpRequest::parseRequestLine(const std::string& line) {
     std::istringstream lineStream(line);
     std::string method, rawPath, httpVersion;
@@ -298,7 +388,13 @@ bool HttpRequest::parseRequestLine(const std::string& line) {
 }
 
 
-
+/**
+ * Normalizes the path by removing consecutive slashes and ensuring only a single slash is used.
+ * This function ensures that the path format is consistent by reducing redundant slashes.
+ * 
+ * @param path The raw path string to be normalized.
+ * @return A normalized version of the path.
+ */
 std::string HttpRequest::normalizePath(const std::string& path) const {
     std::string normalizedPath;
     bool prevWasSlash = false;
@@ -317,6 +413,15 @@ std::string HttpRequest::normalizePath(const std::string& path) const {
     return normalizedPath;
 }
 
+
+/**
+ * Parses a single header line from the HTTP request.
+ * The line is expected to be in the form of "Header-Name: Header-Value".
+ * The function extracts the header name and value, trims whitespace, and converts the header name to lowercase.
+ * 
+ * @param line The header line to be parsed.
+ * @return void
+ */
 void HttpRequest::parseHeaderLine(const std::string& line) {
     size_t colonPos = line.find(':');
     //colon is found
@@ -341,6 +446,13 @@ void HttpRequest::parseHeaderLine(const std::string& line) {
     }
 }
 
+/**
+ * Trims leading and trailing whitespace characters (spaces, tabs, carriage returns, newlines) from a string.
+ * This function is used to clean up strings, especially when processing headers or values from the HTTP request.
+ * 
+ * @param str The string to be trimmed.
+ * @return A string with leading and trailing whitespace removed.
+ */
 std::string HttpRequest::trim(const std::string& str) {
     size_t first = str.find_first_not_of(" \t\r\n");
     if (first == std::string::npos) return "";
@@ -388,6 +500,13 @@ int HttpRequest::getParseErrorCode() const {
     return parseErrorCode_;
 }
 
+
+/**
+ * Debug function that displays the content of the HTTP request.
+ * This function is typically used for logging or debugging purposes to inspect the contents of the request.
+ * 
+ * @return void
+ */
 void HttpRequest::displayContent() const
 {
     std::cout << RED <<"HttpRequest::displayContent" << RESET << std::endl;
@@ -398,6 +517,14 @@ void HttpRequest::displayContent() const
     std::cout << RED <<"Body : " << body_ << RESET << std::endl;
 }
 
+
+/**
+ * Resets the state of the HttpRequest object.
+ * This function clears all data, including raw data, headers, method, path, body, and any parsing state.
+ * It's useful for reusing the object to parse a new request.
+ * 
+ * @return void
+ */
 void HttpRequest::reset() {
     rawData_.clear();
     method_.clear();

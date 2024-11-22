@@ -113,7 +113,7 @@ void DataSocket::processRequest() {
 }
 
 bool DataSocket::sendData() {
-    std::cout << CYAN <<"DataSocket::sendData " RESET <<std::endl;//test
+    // std::cout << CYAN <<"DataSocket::sendData " RESET <<std::endl;
     
     if (sendBuffer_.empty()) {
         return true;
@@ -155,9 +155,7 @@ void DataSocket::closeSocket() {
     if (client_fd_ != -1) {
         close(client_fd_);
         client_fd_ = -1;
-        std::cout << RED <<"DataSocket::closeSocket: Socket closed."<< RESET << std::endl;
-    } else {
-        std::cout <<RED << "Tentative de fermeture d'une socket déjà fermée." << RESET << std::endl;
+        // std::cout << RED <<"DataSocket::closeSocket: Socket closed."<< RESET << std::endl;
     }
 }
 
@@ -184,7 +182,7 @@ bool DataSocket::isCgiComplete() const {
 }
 
 bool DataSocket::readFromCgiPipe() {
-    // std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl; // Debug
+    // std::cout << RED << "DataSocket::readFromCgiPipe()" << RESET << std::endl;
     
     char buffer[4096];
     ssize_t bytesRead = read(cgiPipeFd_, buffer, sizeof(buffer));
@@ -192,13 +190,13 @@ bool DataSocket::readFromCgiPipe() {
     if (bytesRead > 0) {
         lastActivityTime_ = time(NULL);
         cgiOutputBuffer_.append(buffer, bytesRead);
-        // std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl; // Debug
+        // std::cout << BLUE << "CGI added buffer: " << std::string(buffer, bytesRead) << RESET << std::endl;
         return true;
     } else if (bytesRead == 0) {
         handleCgiProcessExitStatus();
         return false;
     }else{
-        std::cerr << "Error occured while reading on cgi Pipe" << std::endl;
+        std::cerr << "CGI Gateway Info : Error occured while reading on cgi Pipe" << std::endl;
         terminateCgiProcess(502);
         return false;
     }
@@ -206,25 +204,25 @@ bool DataSocket::readFromCgiPipe() {
 
 void    DataSocket::handleCgiProcessExitStatus()
 {
-    std::cout << YELLOW<< "DataSocket::handleCgiProcessExitStatus"<< RESET << std::endl;//debug
+    // std::cout << YELLOW<< "DataSocket::handleCgiProcessExitStatus"<< RESET << std::endl;
     int status = cgiProcess_->getExitStatus();
     if(cgiProcess_ && status){
         // Vérify exit status
         if (WIFEXITED(status)) {
             int exitStatus = WEXITSTATUS(status);
             if (exitStatus != 0) {
-                std::cerr << "CGI process exited with error code: " << exitStatus << std::endl;
+                std::cerr << "CGI Gateway Info : CGI process exited with error code: " << exitStatus << std::endl;
                 HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
                 sendBuffer_ = response.generateResponse();
                 sendBufferOffset_ = 0;
             } 
         } else if (WIFSIGNALED(status)) {
-            std::cerr << "CGI process was terminated by a signal." << std::endl;
+            std::cerr << "CGI Gateway Info : CGI process was terminated by a signal." << std::endl;
             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
         } else {
-            std::cerr << "CGI process terminated abnormally." << std::endl;
+            std::cerr << "CGI Gateway Info : CGI process terminated abnormally." << std::endl;
             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
@@ -260,7 +258,6 @@ void DataSocket::terminateCgiProcess(int errorCode) {
     if (cgiProcess_) {
         cgiProcess_->terminate();
         closeCgiPipe();
-        // Envoyer une réponse d'erreur au client
         HttpResponse response = handleError(errorCode, getAssociatedServer()->getErrorPageFullPath(errorCode));
         sendBuffer_ = response.generateResponse();
         sendBufferOffset_ = 0;

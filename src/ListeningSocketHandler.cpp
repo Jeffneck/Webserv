@@ -1,5 +1,5 @@
 #include "../includes/ListeningSocketHandler.hpp"
-#include <arpa/inet.h> // Pour htons, htonl
+// #include <arpa/inet.h> // Pour htons, htonl
 #include <iostream>
 
 ListeningSocketHandler::ListeningSocketHandler() {
@@ -32,17 +32,22 @@ void ListeningSocketHandler::initialize(const std::vector<Server*>& servers) {
         uint16_t port = server->getPort();
         std::pair<uint32_t, uint16_t> key(host, port);
 
-        // Vérifier si un ListeningSocket existe déjà pour ce IP:Port
-        if (listeningSocketsMap_.find(key) == listeningSocketsMap_.end()) {
-            // Créer un nouveau ListeningSocket
-            ListeningSocket* newSocket = new ListeningSocket(host, port);
-            listeningSocketsMap_[key] = newSocket;
-            addListeningSocket(newSocket);
-            // std::cout << "ListeningSocketHandler::initialize   : ListeningSocket créé pour " << inet_ntoa(*(struct in_addr*)&host) 
-            //           << ":" << ntohs(port) << std::endl;//test
+        try {
+            // Vérifier si un ListeningSocket existe déjà pour cette IP:Port
+            if (listeningSocketsMap_.find(key) == listeningSocketsMap_.end()) {
+                // Créer un nouveau ListeningSocket
+                ListeningSocket* newSocket = new ListeningSocket(host, port);
+                listeningSocketsMap_[key] = newSocket;
+                addListeningSocket(newSocket);
+            }
+
+            // Lier le serveur au ListeningSocket existant
+            listeningSocketsMap_[key]->addServer(server);
+        } catch (const std::runtime_error& e) {
+            std::cerr << "Exception while initializing listening socket: " << e.what() << std::endl;
+            // Ici, nous arrêtons le serveur si une erreur critique se produit lors de la création du socket
+            throw std::runtime_error("Critical error: Unable to initialize listening socket, server will stop.");
         }
-        // Ajouter le serveur au ListeningSocket existant
-        listeningSocketsMap_[key]->addServer(server);
     }
-    // std::cout << "ListeningSocketHandler::initialize   : Initialization des ListeningSockets terminée." << std::endl;
 }
+

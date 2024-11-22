@@ -30,18 +30,13 @@ int main(int argc, char *argv[])
     }
 
     try {
-        // Créer une instance de WebServer
         WebServer webServer;
-
-        // Charger la configuration à partir du fichier
         webServer.loadConfiguration(configFile);
-        std::cout << "Info : Configuration loaded successfully" << std::endl;
         webServer.start();
-        std::cout << "Info : Webserver is now running" << std::endl;
         webServer.runEventLoop();
 
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 

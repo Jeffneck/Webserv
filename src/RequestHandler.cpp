@@ -51,18 +51,15 @@ const Server* RequestHandler::selectServer(const HttpRequest& request) const {
     for (size_t i = 0; i < associatedServers_.size(); ++i) {
         const std::vector<std::string>& serverNames = associatedServers_[i]->getServerNames();
         if (std::find(serverNames.begin(), serverNames.end(), hostHeader) != serverNames.end()) {
-            // std::cout << "RequestHandler::selectServer   : Server found by name => first name of server : " << associatedServers_[i]->getServerNames()[0] << " ip:port : "<< associatedServers_[i]->getHost() << ":"<< associatedServers_[i]->getPort() << std::endl; //test
             return associatedServers_[i];
         }
     }
 
     // first server is default
     if (!associatedServers_.empty()) {
-        // std::cerr << "RequestHandler::selectServer   : Default server Used => first name of server : " << associatedServers_[0]->getServerNames()[0] << " ip:port : "<< associatedServers_[0]->getHost() << ":"<< associatedServers_[0]->getPort() << std::endl;//test
         return associatedServers_[0];
     }
 
-    // std::cerr << "RequestHandler::selectServer   : No server found. Default server must exist." << std::endl;//test
     // No server in .conf
     return NULL;// Error managed after
 }
@@ -85,48 +82,46 @@ const Location* RequestHandler::selectLocation(const Server* server, const HttpR
         }
     }
 
-    // if (matchedLocation)
-    //     std::cout << "Request Path: " << requestPath << " Matched location: " << matchedLocation->getPath() << std::endl; //test
-    return matchedLocation; // NULL is not an error here
+    return matchedLocation; // NULL is not an error here, because it is possible that there is no specific rules for this location
 }
 
-void RequestHandler::verifyFile(const std::string& fullPath, const bool tryOpen) const {
-    // Vérification de la sécurité du chemin
-    // if (!isPathSecure(server->getRoot(), fullPath)) {
-    //     throw HttpException(403, "Forbidden: Path traversal detected");
-    // }
-
-    // Vérification de l'existence et de l'accessibilité du fichier
-    struct stat fileStat;
-    if (stat(fullPath.c_str(), &fileStat) != 0) {
-        if (errno == EACCES) {
-            throw HttpException(403, "Forbidden: File access denied");
-        } else if (errno == ENOENT || errno == ENOTDIR) {
-            throw HttpException(404, "Not Found: File not found or not a directory");
-        } else {
-            throw HttpException(500, "Internal Server Error: Unable to access file");
-        }
-    }
-
-    // Vérification que c'est un fichier régulier
-    if (!S_ISREG(fileStat.st_mode)) {
-        throw HttpException(403, "Forbidden: Not a regular file");
-    }
-
-    // Vérification de l'ouverture du fichier
-    if(tryOpen == true)
-    {
-        std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
-        if (!file.is_open()) {
-            if (errno == EACCES) {
-                throw HttpException(403, "Forbidden: Unable to open file");
-            } else {
-                throw HttpException(404, "Not Found: File could not be opened");
-            }
-        }
-        file.close();
-    }
-}
+/**
+ * @brief Processes the HTTP request and generates an appropriate HTTP response.
+ * 
+ * This function is responsible for handling various types of HTTP requests. It processes the request by first 
+ * selecting the appropriate server and location, validating the HTTP method, checking request headers (such as 
+ * Content-Length), and then deciding whether the request should be handled by serving static files, processing 
+ * CGI scripts, handling file uploads, or file deletions. It also handles redirections and validates the security 
+ * of file paths.
+ * 
+ * - **Server and Location Selection**: The function first verifies that the correct server and location are 
+ *   selected based on the request. If a server or location is not found, an error is returned.
+ * 
+ * - **Method Validation**: It checks if the HTTP method (GET, POST, DELETE, etc.) is allowed for the current 
+ *   location. If the method is not allowed, it responds with a `405 Method Not Allowed` error.
+ * 
+ * - **Content-Length Validation**: The function checks the `Content-Length` header to ensure it does not exceed 
+ *   the maximum allowed size for the server or location. If the length is invalid or exceeds the limit, it responds 
+ *   with a `400 Bad Request` or `413 Payload Too Large` error.
+ * 
+ * - **Redirection Handling**: If a redirection is configured for the location, the request is redirected to the 
+ *   specified URL with a `302 Found` status code.
+ * 
+ * - **CGI Process Handling**: If the request should be handled by a CGI script, the function verifies the file's 
+ *   existence and permissions, starts the CGI process, and handles the interaction with the process.
+ * 
+ * - **Static File Handling**: If the request is for a static file (typically a GET request), the file is served 
+ *   to the client.
+ * 
+ * - **File Upload and Deletion**: If the request is a POST for file upload or DELETE for file deletion, the 
+ *   corresponding handler is called to manage the file operation.
+ * 
+ * - **Error Handling**: If any error occurs during processing (e.g., invalid method, missing file, or invalid request), 
+ *   the function generates an appropriate error response with an error page.
+ * 
+ * This function ensures that the web server can handle a variety of HTTP request types, returning the correct response 
+ * based on the configuration and request specifics.
+ */
 
 void RequestHandler::process(const Server* server, const Location* location, const HttpRequest& request, RequestResult& result) const {
     // Error if Server has not been found
@@ -206,20 +201,6 @@ void RequestHandler::process(const Server* server, const Location* location, con
         return;
     }
 
-    // // Handle CGI
-    // if (location && !location->getCgiExtension().empty() && location->getCGIEnable() && endsWith(request.getPath(), location->getCgiExtension())) {
-    //     CgiProcess* cgiProcess = startCgiProcess(server, location, request);
-    //     if (cgiProcess) {
-    //         result.cgiProcess = cgiProcess;
-    //         result.responseReady = false;
-    //         return;
-    //     } else {
-    //         result.response = handleError(500, getErrorPageFullPath(500, location, server));
-    //         result.responseReady = true;
-    //         return;
-    //     }
-    // }
-
     // Handle CGI
     if (location && !location->getCgiExtension().empty() && location->getCGIEnable() && endsWith(request.getPath(), location->getCgiExtension())) {
         try {
@@ -265,15 +246,62 @@ void RequestHandler::process(const Server* server, const Location* location, con
     result.responseReady = true;
 }
 
+/**
+ * @brief Verifies the existence, accessibility, and validity of a file.
+ * 
+ * This function checks if the specified file exists and whether it is accessible.
+ * It throws an HttpException if the file cannot be accessed or if it is not a regular file.
+ * Optionally, it tries to open the file if `tryOpen` is true, throwing an exception if the file cannot be opened.
+ */
+void RequestHandler::verifyFile(const std::string& fullPath, const bool tryOpen) const {
+
+    // Check file existence and accessibility
+    struct stat fileStat;
+    if (stat(fullPath.c_str(), &fileStat) != 0) {
+        if (errno == EACCES) {
+            throw HttpException(403, "Forbidden: File access denied");
+        } else if (errno == ENOENT || errno == ENOTDIR) {
+            throw HttpException(404, "Not Found: File not found or not a directory");
+        } else {
+            throw HttpException(500, "Internal Server Error: Unable to access file");
+        }
+    }
+
+    // Check that it's a regular file
+    if (!S_ISREG(fileStat.st_mode)) {
+        throw HttpException(403, "Forbidden: Not a regular file");
+    }
+
+    // check that it is possible to open the file
+    if(tryOpen == true)
+    {
+        std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
+        if (!file.is_open()) {
+            if (errno == EACCES) {
+                throw HttpException(403, "Forbidden: Unable to open file");
+            } else {
+                throw HttpException(404, "Not Found: File could not be opened");
+            }
+        }
+        file.close();
+    }
+}
+
+/**
+ * @brief Starts a CGI process to handle a request.
+ * 
+ * This function initializes the necessary environment for running a CGI script, including setting up
+ * the working directory, constructing the argument and environment variable lists, and starting the CGI process.
+ * It throws an HttpException if any step in the process fails.
+ */
 CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location* location, const HttpRequest& request) const {
     char cwd[PATH_MAX];
 
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        // Erreur interne, impossible d'obtenir le répertoire courant
         throw HttpException(500, "Internal Server Error: Unable to get current working directory");
     }
 
-    // Construction du chemin du script
+    // build scriptWorkingDir path (directory where the script is gonna be exec) = often /cgi-bin/
     std::string scriptWorkingDir = cwd;
     scriptWorkingDir += "/" ;
     scriptWorkingDir += server->getRoot();
@@ -283,28 +311,29 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
         scriptWorkingDir += "/";
     }
 
+    // build relativeFilePath path (file that is gonna be exec)
     std::string relativeFilePath = request.getPath();
     if (location && relativeFilePath.compare(0, location->getPath().length(), location->getPath()) == 0) {
         relativeFilePath.erase(0, location->getPath().length());
     }
     relativeFilePath = "./" + relativeFilePath;
 
-    // Extraction des paramètres
+    // Extract parameters to give to the script (different methods for GET and POST)
     std::map<std::string, std::string> params;
     if (request.getMethod() == "GET") {
-        // Extraction des paramètres depuis la query string
+        // Params are in the query string for GET
         params = createScriptParamsGET(request.getQueryString());
     } else if (request.getMethod() == "POST") {
         std::string contentType = request.getHeader("content-type");
         if (contentType == "application/x-www-form-urlencoded") {
-            // Extraction des paramètres depuis le corps de la requête
+            // Params are in the body for POST
             params = createScriptParamsPOST(request.getBody());
         } else {
-            // Type de contenu non supporté
+            // Content is not supported
             throw HttpException(415, "Unsupported Media Type: " + contentType);
         }
     } else {
-        // Méthode HTTP non autorisée
+        // Method is not supported
         throw HttpException(405, "Method Not Allowed: " + request.getMethod());
     }
 
@@ -319,6 +348,12 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
     return cgiProcess;
 }
 
+/**
+ * @brief Sets up environment variables for the CGI script.
+ * 
+ * This function populates the environment variable list (`envVars`) required to run a CGI script.
+ * It adds variables such as `REQUEST_METHOD`, `CONTENT_TYPE`, `CONTENT_LENGTH`, and the script's filename.
+ */
 void RequestHandler::setupScriptEnvp(const HttpRequest& request, const std::string& relativeFilePath,  std::vector<std::string>& envVars) const{
     envVars.push_back("GATEWAY_INTERFACE=CGI/1.1");
     envVars.push_back("SERVER_PROTOCOL=HTTP/1.1");
@@ -328,7 +363,12 @@ void RequestHandler::setupScriptEnvp(const HttpRequest& request, const std::stri
     envVars.push_back("CONTENT_LENGTH=" + request.getHeader("content-Length"));
 }
 
-
+/**
+ * @brief Creates a map of parameters from the query string of a GET request.
+ * 
+ * This function parses the query string from a GET request, extracting key-value pairs and storing them in a map.
+ * It handles both the case where a parameter has a value and where it does not.
+ */
 std::map<std::string, std::string> RequestHandler::createScriptParamsGET(const std::string& queryString) const {
     std::map<std::string, std::string> params;
     std::string::size_type last_pos = 0, amp_pos;
@@ -364,6 +404,12 @@ std::map<std::string, std::string> RequestHandler::createScriptParamsGET(const s
     return params;
 }
 
+/**
+ * @brief Creates a map of parameters from the body of a POST request.
+ * 
+ * This function parses the body of a POST request, extracting key-value pairs and storing them in a map.
+ * It assumes the body is formatted as `key=value&key=value`.
+ */
 std::map<std::string, std::string> RequestHandler::createScriptParamsPOST(const std::string& postBody) const {
     std::map<std::string, std::string> params;
     std::string::size_type last_pos = 0, amp_pos;
@@ -397,25 +443,29 @@ std::map<std::string, std::string> RequestHandler::createScriptParamsPOST(const 
     return params;
 }
 
+
+/**
+ * @brief Returns the full path to the requested file.
+ * 
+ * This function constructs the absolute file path based on the server's root and the location's root, 
+ * adjusting for any specified path and query parameters. It returns the resulting path.
+ */
 std::string RequestHandler::getFileFullPath(const Server* server, const Location* location, const HttpRequest& request) const {
 
     std::string root = server->getRoot();
-    // std::string index = server->getIndex();
 
     if (location) {
         root = location->getRoot();
-        // index = location->getIndex();
     }
 
-    // Construire le chemin de la requête
     std::string requestPath = request.getPath();
 
-    // Vérifier que requestPath n'est pas vide
+    // if empty, make it root by adding /
     if (requestPath.empty()) {
         requestPath = "/";
     }
 
-    // Supprimer le chemin de location si root est défini dans location
+    // Delete location path if root is defined in location
     if (location && location->getRootIsSet()) {
         std::string to_remove = location->getPath();
         size_t pos = requestPath.find(to_remove);
@@ -423,15 +473,19 @@ std::string RequestHandler::getFileFullPath(const Server* server, const Location
             requestPath.erase(pos, to_remove.length());
         }
     }
-
-    // Construire le chemin complet vers le fichier
-    // std::cout << GREEN << root << "'"<< requestPath<< RESET<< std::endl;//debug
     return (root + requestPath);
 }
 
+
+/**
+ * @brief Serves a static file to the client.
+ * 
+ * This function attempts to serve a static file to the client by reading the file and sending its content in the response.
+ * It handles the cases where the path is a directory, and it can generate an auto-index if enabled. If any error occurs,
+ * it responds with an appropriate error code.
+ */
 HttpResponse RequestHandler::serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const {
     HttpResponse response;
-    //get filefullpath---------
     std::string fileFullPath = getFileFullPath(server, location, request);
 
     // Handle the case where the path ends with a '/'
@@ -490,105 +544,6 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
 }
 
 
-
-// HttpResponse RequestHandler::serveStaticFile(const Server* server, const Location* location, const HttpRequest& request) const {
-//     HttpResponse response;
-//     //get filefullpath---------
-//     // Determine root directory and index file
-//     std::string root = server->getRoot();
-//     std::string index = server->getIndex();
-
-//     if (location) {
-//         root = location->getRoot();
-//         index = location->getIndex();
-//     }
-
-//     // Build the full path to the requested file
-//     std::string requestPath = request.getPath();
-
-//     // Check that requestPath is not empty
-//     if (requestPath.empty()) {
-//         requestPath = "/";
-//     }
-
-//     // Handle the case where the path ends with a '/'.
-//     if (requestPath[requestPath.size() - 1] == '/') {
-//         if (location && !location->getIndexIsSet() && location->getAutoIndex()) {
-//             // Generate auto-index if index is not defined and auto-index is enabled
-//             return generateAutoIndex(root + requestPath, requestPath);
-//         }
-//         requestPath += index;
-//     }
-
-//     // Remove the location path from the requestPath if root is defined in the location
-//     if (location && location->getRootIsSet()) {
-//         std::string to_remove = location->getPath();
-//         size_t pos = requestPath.find(to_remove);
-//         if (pos != std::string::npos) {
-//             requestPath.erase(pos, to_remove.length());
-//         }
-//     }
-
-//     // Build complete path to file
-//     std::string fullPath = root + requestPath;
-//     std::cout << "Serving file: " << fullPath << std::endl;
-
-//     //verify file
-//     // Check path safety
-//     if (!isPathSecure(root, fullPath)) {
-//         return handleError(403, getErrorPageFullPath(403, location, server));
-//     }
-
-//     // Check that the file exists and is accessible
-//     struct stat fileStat;
-//     if (stat(fullPath.c_str(), &fileStat) != 0) {
-//         if (errno == EACCES) {
-//             return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-//         } else if (errno == ENOENT || errno == ENOTDIR) {
-//             return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
-//         } else {
-//             return handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
-//         }
-//     }
-
-//     // Check that it's a regular file
-//     if (!S_ISREG(fileStat.st_mode)) {
-//         return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-//     }
-
-//     // Open the file
-//     std::ifstream file(fullPath.c_str(), std::ios::in | std::ios::binary);
-//     if (!file.is_open()) {
-//         if (errno == EACCES) {
-//             return handleError(403, getErrorPageFullPath(403, location, server)); // Forbidden
-//         } else {
-//             return handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
-//         }
-//     }
-
-//     // Read content
-//     std::stringstream buffer;
-//     buffer << file.rdbuf();
-//     std::string fileContent = buffer.str();
-//     file.close();
-
-//     // Define response headers and body
-//     response.setStatusCode(200);
-//     response.setBody(fileContent);
-
-//     // Define Content-Type according to file extension
-//     size_t dotPos = fullPath.find_last_of('.');
-//     if (dotPos != std::string::npos) {
-//         std::string extension = fullPath.substr(dotPos + 1);
-//         std::string contentType = getMimeType(extension);
-//         if (!contentType.empty()) {
-//             response.setHeader("Content-Type", contentType);
-//             response.setHeader("Connection", "close");
-//         }
-//     }
-
-//     return response;
-// }
 
 /*
  * This function handles file uploads from HTTP requests with the "multipart/form-data" content type.
@@ -686,6 +641,14 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
     return response;
 }
 
+
+/**
+ * @brief Handles file deletion requests.
+ * 
+ * This function processes a DELETE request for a file, checking the validity and permissions of the requested file.
+ * It ensures the file exists, is accessible, and is a regular file. If any checks fail, an appropriate HTTP error response
+ * is returned. If the file can be deleted, it attempts the deletion and returns a success response with status 204.
+ */
 HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Location* location, const Server* server) const {
     std::cout << RED << "RequestHandler::handleDeletion" << RESET << std::endl; // Debug
 
@@ -763,7 +726,6 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 
     // build success response
     response.setStatusCode(204);
-    // response.setBody("File deleted successfully.");
     response.setHeader("Content-Type", "text/plain; charset=UTF-8");
     response.setHeader("Connection", "close");
 
@@ -771,8 +733,15 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
 }
 
 
+
+/**
+ * @brief Generates an auto-index HTML page for a directory.
+ * 
+ * If a request is made to a directory, this function generates an HTML page listing the contents of the directory,
+ * including links to files and subdirectories. It handles cases where the directory cannot be read and returns a 
+ * generic error message if necessary.
+ */
 HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, const std::string& requestPath) const {
-    // std::cout << RED << "RequestHandler::generateAutoIndex" << RESET << std::endl; // test
     std::stringstream ss;
 
     
@@ -805,6 +774,13 @@ HttpResponse RequestHandler::generateAutoIndex(const std::string& fullPath, cons
     return response; 
 }
 
+
+/**
+ * @brief Returns the MIME type based on file extension.
+ * 
+ * This function maps a file extension to its corresponding MIME type. It is used to determine the `Content-Type` 
+ * header when serving files. If the extension is unknown, it defaults to "application/octet-stream".
+ */
 std::string RequestHandler::getMimeType(const std::string& extension) const {
     if (extension == "html" || extension == "htm")
         return "text/html";
@@ -820,10 +796,16 @@ std::string RequestHandler::getMimeType(const std::string& extension) const {
         return "image/gif";
     if (extension == "txt")
         return "text/plain";
-    // Ajouter d'autres types MIME selon les besoins
-    return "application/octet-stream"; // Type par défaut
+    return "application/octet-stream"; // Default type = navigators will upload the file served if this mime type is send
 }
 
+
+/**
+ * @brief Checks if the file path is secure and does not lead to directory traversal.
+ * 
+ * This function verifies that the requested file path is within the root directory, preventing potential directory traversal 
+ * attacks. It uses `realpath` to get the absolute paths and checks if the file path is contained within the root path.
+ */
 bool RequestHandler::isPathSecure(const std::string& root, const std::string& fullPath) const {
     char realRoot[PATH_MAX];
     char realFullPath[PATH_MAX];
@@ -836,8 +818,6 @@ bool RequestHandler::isPathSecure(const std::string& root, const std::string& fu
 
     std::string realRootStr(realRoot);
     std::string realFullPathStr(realFullPath);
-    // std::cout << YELLOW << "root: "<< realRootStr << " fullpath : "<< realFullPathStr << std::endl;//debug
-    // Vérifier que fullPath commence par root
     if (realFullPathStr.find(realRootStr) != 0) {
         std::cerr << "Path traversal attempt detected: " << fullPath << std::endl;
         return false;
@@ -846,6 +826,14 @@ bool RequestHandler::isPathSecure(const std::string& root, const std::string& fu
     return true;
 }
 
+
+/**
+ * @brief Retrieves the full file path for the error page based on the status code.
+ * 
+ * This function looks up the full path to the error page for a specific HTTP status code. It checks for an error page 
+ * defined in the location context first, then the server context, and finally the global config context if no specific 
+ * error page is found.
+ */
 std::string RequestHandler::getErrorPageFullPath(int statusCode, const Location* location, const Server* server) const {
     if (location && !location->getErrorPageFullPath(statusCode).empty()) {
         return location->getErrorPageFullPath(statusCode);
@@ -856,6 +844,12 @@ std::string RequestHandler::getErrorPageFullPath(int statusCode, const Location*
     }
 }
 
+/**
+ * @brief Joins a list of strings with a specified delimiter.
+ * 
+ * This utility function takes a list of strings and concatenates them into a single string, inserting the specified delimiter
+ * between each element. It is typically used for constructing header values like the "Allow" header in error responses.
+ */
 std::string RequestHandler::join(const std::vector<std::string>& elements, const std::string& delimiter) const {
     std::ostringstream os;
     for (size_t i = 0; i < elements.size(); ++i) {

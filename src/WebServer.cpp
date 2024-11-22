@@ -26,6 +26,8 @@ void WebServer::loadConfiguration(const std::string& configFile) {
     } catch (const ParsingException &e) {
         throw (e);
     }
+    std::cout << "Info : Configuration loaded successfully" << std::endl;
+
 }
 
 void WebServer::start() {
@@ -34,10 +36,19 @@ void WebServer::start() {
     }
 
     const std::vector<Server*>& servers = config_->getServers();
-    listeningHandler_.initialize(servers);
-    // Ignore SigPipe (broken pipe signal) => a broken pipe (CGI error) will not make Webserver stop but need to send HTTP 500 code and close client connection
+    
+    try {
+        listeningHandler_.initialize(servers);
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Server initialization failed: " << e.what() << std::endl;
+        throw (e); //webserver will not run
+    }
+
+    // Ignore SigPipe (broken pipe signal) 
+    //=> a broken pipe (CGI error) will not make Webserver stop but need to send HTTP 500 code and close client connection
     signal(SIGPIPE, SIG_IGN);
-    // std::cout << "Server started with " << servers.size() << " servers." << std::endl;//debug
+
+    std::cout << "Info : WebServer is ready and is currently managing " << servers.size() << " servers." << std::endl; // debug
 }
 
 void WebServer::setupPollfds(std::vector<struct pollfd> &pollfds,
@@ -91,7 +102,28 @@ void WebServer::setupPollfds(std::vector<struct pollfd> &pollfds,
         }
 }
 
+
+
+/**
+ * @brief Runs the event loop for the web server, handling incoming events and socket communication.
+ * 
+ * This function implements an event-driven model using multiplexing with `poll()`, allowing the server to monitor 
+ * multiple file descriptors (sockets and pipes) for input (`POLLIN`) and output (`POLLOUT`) events in a non-blocking manner. 
+ * By using multiplexing, the server can efficiently handle multiple connections and processes concurrently without blocking on 
+ * any single socket or operation. 
+ * 
+ * Specifically: POLLIN and POLLOUT are watched at THE same time for every DataSocket 
+ * - **POLLIN** is monitored for sockets that have incoming data to read, indicating when a new request or data is available.
+ * - **POLLOUT** is monitored for sockets that are ready to send data, allowing the server to send responses back to clients when they are ready.
+ * 
+ * The `poll()` system call monitors these events across multiple file descriptors, allowing the server to handle multiple 
+ * requests and responses concurrently without wasting resources on blocked operations. 
+ * 
+ * The event loop also handles timeouts, processes CGI output, and closes idle or erroneous sockets as needed.
+ */
 void WebServer::runEventLoop() {
+    std::cout << "Info : Webserver is now running" << std::endl;
+    
     while (g_running) {
         //Pollfds stores all fds we want to keep an eye on : it is used to monitor events in multiplexing IO (non-blocking state)
         std::vector<struct pollfd> pollfds;
@@ -110,7 +142,7 @@ void WebServer::runEventLoop() {
         //      poll detect events and add flags to pollfds[i].revents
         //      if a flag is detected for a fd / or poll timeout :  Multiplexing I/O phase ends
         //      ret < 0 : Fatal Error or SIGINT
-        int timeout = 2000;
+        int timeout = 5000;
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
         if (ret < 0) {
             cleanUp();
@@ -134,7 +166,7 @@ void WebServer::runEventLoop() {
                     }
                 }
             } 
-            
+
             // Data Sockets
             else if (pollFdTypes[i] == 1) {
                 DataSocket* dataSocket = pollDataSockets[i];
@@ -168,12 +200,12 @@ void WebServer::runEventLoop() {
                 DataSocket* dataSocket = pollDataSockets[i];
                 //Data sent by CGI
                 if (pollfds[i].revents & POLLIN) {
-                    // std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;
+                    std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;
                     dataSocket->readFromCgiPipe();
                 }
                 //EOF sent by CGI
                 else if (pollfds[i].revents & (POLLHUP)) {
-                    // std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;
+                    std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;
                     dataSocket->readFromCgiPipe();
                     dataSocket->closeCgiPipe();
                 }
@@ -189,7 +221,7 @@ void WebServer::runEventLoop() {
         checkDataSocketTimeouts();
         dataHandler_.removeClosedSockets();
     }
-    //Events triggered afet a fatal error / or SIGINT 
+    //Events triggered afet a SIGINT (not recquired by the subject but useful)
     std::cout << "Info : Webserver had been shut down" << std::endl;
     cleanUp();
 }
@@ -218,14 +250,12 @@ void WebServer::checkCgiTimeouts() {
 }
 
 void WebServer::checkDataSocketTimeouts() {
-    // std::cout << "WebServer::checkDataSocketTimeouts" << std::endl;//debug
     const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
     time_t currentTime = time(NULL);
 
     for (size_t i = 0; i < dataSockets.size(); ++i) {
         DataSocket* dataSocket = dataSockets[i];
         if (difftime(currentTime, dataSocket->getLastActivityTime()) > SOCKET_INACTIVITY_TIMEOUT) {
-            // std::cout << RED << "DataSocket timeout. Closing inactive socket fd: " << dataSocket->getSocket() << RESET << std::endl; //debug
             dataSocket->closeSocket();
         }
     }

@@ -21,13 +21,38 @@ struct RequestResult {
 
 class HttpException : public std::runtime_error {
 public:
-    int statusCode;  // Code de statut HTTP
-
-    // Constructeur de l'exception personnalisée
+    int statusCode;  // HTTP status code
     HttpException(int code, const std::string& message)
         : std::runtime_error(message), statusCode(code) {}
 };
 
+
+/**
+ * @class RequestHandler
+ * 
+ * The `RequestHandler` class is responsible for processing HTTP requests and generating appropriate HTTP 
+ * responses. It handles the entire lifecycle of an HTTP request, including selecting the appropriate server 
+ * and location, processing the request (whether it involves serving a static file, handling file uploads, 
+ * or executing a CGI process), and returning the final response.
+ * 
+ * - **Request Processing**: The class processes incoming HTTP requests by selecting the correct server 
+ *   and location, handling different types of requests, and generating the corresponding response.
+ * 
+ * - **Static File Handling**: It manages the serving of static files by generating the full file path, 
+ *   verifying the file's security, and ensuring the correct MIME type is set for the response.
+ * 
+ * - **CGI Process Management**: The class is capable of handling dynamic content via CGI by setting up 
+ *   the necessary environment variables, creating the appropriate parameters, and starting the CGI process.
+ * 
+ * - **File Upload and Deletion**: It handles HTTP POST requests for file uploads and DELETE requests for 
+ *   file deletions, managing file locations and ensuring appropriate permissions and size limits.
+ * 
+ * - **Error Handling**: It includes methods for managing errors and returning appropriate HTTP error codes 
+ *   along with custom error pages when needed.
+ * 
+ * This class is central to the web server's ability to interpret and respond to HTTP requests, whether 
+ * the request is for static content, dynamic content via CGI, or file operations.
+ */
 class RequestHandler {
 public:
     RequestHandler(const Config& config, const std::vector<Server*>& associatedServers);

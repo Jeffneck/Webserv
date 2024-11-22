@@ -2,7 +2,6 @@
 import sys
 import time
 
-# Pause de 10 secondes
 time.sleep(10)
 
 # Génération du contenu HTML après la pause

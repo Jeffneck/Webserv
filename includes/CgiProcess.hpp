@@ -11,7 +11,6 @@
 
 class CgiProcess {
 public:
-    // Modifié le constructeur pour accepter les arguments sous forme de map
     CgiProcess(const std::string& scriptWorkingDir, const std::string& relativeFilePath, const std::map<std::string, std::string>& params, const std::vector<std::string>& envVars);
     ~CgiProcess();
 
@@ -19,7 +18,6 @@ public:
     bool isRunning();
     int getPipeFd() const;
     int getExitStatus();
-    // std::string readOutput();
 
     bool hasTimedOut() const;
     bool isOutputComplete() const;
@@ -30,29 +28,25 @@ private:
     pid_t pid_;
     int pipefd_[2];
 
+    //create the envirronnement wherewe want to execute the file
     std::string scriptWorkingDir_;
     std::string relativeFilePath_;
 
-    // Ajout des membres pour stocker les arguments et l'environnement
     std::vector<char*> args_;
     std::vector<char*> envp_;
 
-    // Stockage des chaînes pour assurer leur durée de vie
     std::vector<std::string> argStrings_;
     std::vector<std::string> envStrings_;
 
-    // Gerer le temps d' execution max 
+    // check timeouts
     time_t startTime_;
     int maxExecutionTime_;
 
-    //stocker le statut en sortie de waitpid
+    // keep the exit status of the CGI
     int cgiExitStatus_;
 
-    //verifier la sortie de read
-    // bool outputComplete_;
-    // bool outputError_;
 
-    // Méthodes pour créer et nettoyer les arguments et l'environnement
+    // Manage arguments to give to the CGI
     void createArgv(const std::map<std::string, std::string>& scriptParams);
     void cleanupArgv();
 

@@ -8,6 +8,18 @@
 
 class Server; // Forward declaration
 
+
+/**
+ * @class Config
+ * 
+ * The `Config` class is responsible for storing and managing the configuration of a web server.
+ * It holds important global settings such as client request limits, error page mappings, 
+ * and the root directory for serving files. It also manages a collection of `Server` objects
+ * that represent individual web servers that may be configured to handle different IPs and ports.
+ * 
+ * This class allows the configuration data to be accessed and modified through various getter and setter methods.
+ * It also provides utility methods for managing error pages, the root directory, and other server configurations.
+ */
 class Config
 {
 public:

@@ -12,6 +12,18 @@
 class Config;   // Forward declaration
 class Location; // Forward declaration
 
+
+/**
+ * @class Server
+ * 
+ * The `Server` class is responsible for encapsulating the configuration settings of a web server. It contains directives related to 
+ * server behavior such as server name, root directory, index file, error pages, and client request size limits. Additionally, it 
+ * stores specific information about the server's network settings such as IP address and port, and a list of locations which define 
+ * paths on the server with specific configurations.
+ * 
+ * The `Server` class is designed to allow easy access to and modification of server-related configuration settings. It can handle 
+ * multiple server names, locations, and error pages, providing a complete configuration for a single server instance.
+ */
 class Server
 {
 public:
