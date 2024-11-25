@@ -328,7 +328,12 @@ CgiProcess* RequestHandler::startCgiProcess(const Server* server, const Location
         if (contentType == "application/x-www-form-urlencoded") {
             // Params are in the body for POST
             params = createScriptParamsPOST(request.getBody());
-        } else {
+        } 
+        else if (contentType == "plain/text")
+        {
+            //do nothing, body will be transmitted via envVars
+        }
+        else {
             // Content is not supported
             throw HttpException(415, "Unsupported Media Type: " + contentType);
         }
@@ -361,6 +366,8 @@ void RequestHandler::setupScriptEnvp(const HttpRequest& request, const std::stri
     envVars.push_back("SCRIPT_FILENAME=" + relativeFilePath);
     envVars.push_back("CONTENT_TYPE=" + request.getHeader("content-Type"));
     envVars.push_back("CONTENT_LENGTH=" + request.getHeader("content-Length"));
+    envVars.push_back("REQUEST_BODY=" + request.getBody());
+    envVars.push_back("QUERY_STRING=" + request.getQueryString());
 }
 
 /**
@@ -559,7 +566,7 @@ HttpResponse RequestHandler::serveStaticFile(const Server* server, const Locatio
  * 8. On successful upload, a 201 status code is returned along with a success message.
  */
 HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const Location* location, const Server* server) const {
-    std::cout << RED << "RequestHandler::handleFileUpload" << RESET << std::endl; // Test
+    // std::cout << RED << "RequestHandler::handleFileUpload" << RESET << std::endl; //Debug 
     HttpResponse response;
 
     // Check that the Content-Type is multipart/form-data
@@ -625,7 +632,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
                 if (file.is_open()) {
                     file.write(fileData.c_str(), fileData.size());
                     file.close();
-                    std::cout << "Info : File saved: " << fullPath << std::endl;
+                    // std::cout << "Info : File saved: " << fullPath << std::endl;//debug
                 } else {
                     std::cerr << "Error : Failed to save file: " << fullPath << std::endl;
                     response = handleError(500, getErrorPageFullPath(500, location, server));
@@ -637,7 +644,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
 
     response.setStatusCode(201);
     response.setHeader("Connection", "close");
-    response.setBody("File upload successful.");
+    response.setBody("File upload successful.\n");
     return response;
 }
 
@@ -650,7 +657,7 @@ HttpResponse RequestHandler::handleFileUpload(const HttpRequest& request, const 
  * is returned. If the file can be deleted, it attempts the deletion and returns a success response with status 204.
  */
 HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Location* location, const Server* server) const {
-    std::cout << RED << "RequestHandler::handleDeletion" << RESET << std::endl; // Debug
+    // std::cout << RED << "RequestHandler::handleDeletion" << RESET << std::endl; // Debug
 
     HttpResponse response;
 
@@ -682,7 +689,6 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
     // Replace special chars written in the path like : %20 for space
     decodeURI(fullPath);
     
-    std::cout << "Info: Attempting to delete file: " << fullPath << std::endl; // Debug
 
     // Verify if path is secure
     if (!isPathSecure(root, fullPath)) {
@@ -697,7 +703,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
             response = handleError(404, getErrorPageFullPath(404, location, server)); // Not Found
             return response;
         } else {
-            std::cerr << "Error Deletion : Error accessing file: " << strerror(errno) << std::endl;
+            std::cerr << "Error Deletion :  unaccessible file: " << strerror(errno) << std::endl;
             response = handleError(500, getErrorPageFullPath(500, location, server)); // Internal Server Error
             return response;
         }
@@ -724,6 +730,7 @@ HttpResponse RequestHandler::handleDeletion(const HttpRequest& request, const Lo
         return response;
     }
 
+    // std::cout << "Info: file deleted: " << fullPath << std::endl; // Debug
     // build success response
     response.setStatusCode(204);
     response.setHeader("Content-Type", "text/plain; charset=UTF-8");

@@ -3,9 +3,6 @@
 # Nom du serveur
 SERVER="./webserv"
 
-# Fichier des URLs
-URLS="stressUrls.txt"
-
 # Fichier de log pour l'utilisation de la mémoire et du CPU
 PS_LOG="ps.log"
 
@@ -22,16 +19,15 @@ sleep 3
 # Lancer en arrière-plan une boucle qui exécute 'ps' toutes les secondes
 (
     while kill -0 $PID 2>/dev/null; do
-        ps -p $PID -o %mem,%cpu,cmd > $PS_LOG
-        sleep 1
+        ps -p $PID -o %mem,cmd >> $PS_LOG
+        sleep 5
     done
 ) &
 
 PS_MONITOR_PID=$!
 
-# Lancer Siege avec 10 utilisateurs pendant 1 minute
-# siege -b -c 10 -t 1M -f $URLS
-siege -b -c 1 -t 1M -f $URLS
+# Lancer Siege pendant 1 min
+siege -b -t 1M "http://127.0.0.1:8080/static/empty.html"
 
 # Attendre un peu pour s'assurer que la boucle 'ps' capture les dernières mesures
 sleep 3
@@ -45,10 +41,7 @@ kill $PID
 # Attendre que le serveur se termine
 wait $PID
 
-# Afficher les descripteurs ouverts après le test
-echo "Descripteurs ouverts après le test :"
-lsof -p $PID
-
 # Afficher le contenu du fichier ps.log
-echo "Utilisation de la mémoire et du CPU pendant le test :"
+# echo "Utilisation de la mémoire et du CPU pendant le test :"
 cat $PS_LOG
+echo "" > $PS_LOG

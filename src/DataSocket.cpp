@@ -13,14 +13,14 @@ DataSocket::DataSocket(int fd, const std::vector<Server*>& servers, const Config
     : client_fd_(fd), associatedServers_(servers), requestComplete_(false), config_(config),
       sendBufferOffset_(0), cgiProcess_(NULL), cgiPipeFd_(-1), cgiComplete_(true),
       shouldCloseAfterSend_(false) {
-    // Initialiser le temps de la dernière activité à l'instant de la création
+    // Timeout detection
     lastActivityTime_ = time(NULL);
 }
 
 
 DataSocket::~DataSocket() {
-    std::cout << "DESTRUCTOR Datasocket" << std::endl;
-    // closeSocket();
+    // std::cout << "DESTRUCTOR Datasocket" << std::endl;
+    closeSocket();
     if (cgiProcess_) {
         delete cgiProcess_;
         cgiProcess_ = NULL;
@@ -29,6 +29,7 @@ DataSocket::~DataSocket() {
 
 bool DataSocket::receiveData() {
     char buffer[4096];
+    //recv is used to read the content of a socket
     ssize_t bytesRead = recv(client_fd_, buffer, sizeof(buffer), 0);
 
     if (bytesRead > 0) {
@@ -39,25 +40,24 @@ bool DataSocket::receiveData() {
         if (httpRequest_.parseRequest()) {
             if (httpRequest_.hasParseError()) {
                 handleParseError(httpRequest_.getParseErrorCode());
-                // Ne pas fermer immédiatement, permettre l'envoi de la réponse
+                // keep socket open to send the error
                 return true;
             }
             requestComplete_ = httpRequest_.isComplete();
         } else {
             if (httpRequest_.hasParseError()) {
                 handleParseError(httpRequest_.getParseErrorCode());
-                // Ne pas fermer immédiatement, permettre l'envoi de la réponse
+                // keep socket open to send the error
                 return true;
             }
         }
+        // keep socket open to send the response
         return true;
     } else if (bytesRead == 0) {
-        // Le client a fermé proprement la connexion
-        std::cout << "Le client a fermé la connexion (recv() a retourné 0)." << std::endl;
+        // std::cout << "Connection properly closed by client, closing socket." << std::endl;
         return false; 
     } else if (bytesRead == -1) {
-        // Une erreur est survenue lors de la réception
-        std::cerr << "Erreur lors de recv() (retourne -1). Fermeture de la connexion." << std::endl;
+        // std::cerr << "Connection suddenly closed by client, or an error occured, closing socket." << std::endl;
         return false;
     }
     return true;
@@ -113,8 +113,6 @@ void DataSocket::processRequest() {
 }
 
 bool DataSocket::sendData() {
-    // std::cout << CYAN <<"DataSocket::sendData " RESET <<std::endl;
-    
     if (sendBuffer_.empty()) {
         return true;
     }
@@ -140,7 +138,7 @@ bool DataSocket::sendData() {
     } 
     //error detected during send, we close the socket responsible
     else if (bytesSent == -1) {
-        std::cerr << "Error occurs while sending data via a DataSocket" << std::endl;
+        // std::cerr << "An error occured while sending data via a DataSocket, socket will be closed" << std::endl;//Debug
         return false;
     }
 
@@ -196,7 +194,7 @@ bool DataSocket::readFromCgiPipe() {
         handleCgiProcessExitStatus();
         return false;
     }else{
-        std::cerr << "CGI Gateway Info : Error occured while reading on cgi Pipe" << std::endl;
+        // std::cerr << "CGI Gateway : Error occured while reading on cgi Pipe" << std::endl;//Debug
         terminateCgiProcess(502);
         return false;
     }
@@ -211,18 +209,18 @@ void    DataSocket::handleCgiProcessExitStatus()
         if (WIFEXITED(status)) {
             int exitStatus = WEXITSTATUS(status);
             if (exitStatus != 0) {
-                std::cerr << "CGI Gateway Info : CGI process exited with error code: " << exitStatus << std::endl;
+                std::cerr << "CGI Gateway : CGI process exited with error code: " << exitStatus << std::endl;
                 HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
                 sendBuffer_ = response.generateResponse();
                 sendBufferOffset_ = 0;
             } 
         } else if (WIFSIGNALED(status)) {
-            std::cerr << "CGI Gateway Info : CGI process was terminated by a signal." << std::endl;
+            std::cerr << "CGI Gateway : CGI process was terminated by a signal." << std::endl;
             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;
         } else {
-            std::cerr << "CGI Gateway Info : CGI process terminated abnormally." << std::endl;
+            std::cerr << "CGI Gateway : CGI process terminated abnormally." << std::endl;
             HttpResponse response = handleError(502, getAssociatedServer()->getErrorPageFullPath(502));
             sendBuffer_ = response.generateResponse();
             sendBufferOffset_ = 0;

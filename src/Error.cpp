@@ -11,7 +11,7 @@
  * Handles the creation of an error HTTP response with a specified status code and error page.
  * 
  * This function generates an HTTP response based on the given status code and the path to an error page.
- * If the error page path is provided and valid, the content of the error page is read and used in the response body.
+//  * If the error page path is provided and valid, the content of the error page is read and used in the response body.
  * If the error page path is invalid (file does not exist, insufficient permissions, or is a directory), a default error message is used.
  * If no error page path is provided, a default error message corresponding to the status code is used.
  * 
@@ -24,7 +24,7 @@
 
 HttpResponse handleError(int statusCode, const std::string &errorPagePath) 
 {
-    std::cout << RED <<"error page path : "<< errorPagePath << RESET << std::endl; // Debug
+    // std::cout << RED <<"error page path : "<< errorPagePath << RESET << std::endl; // Debug
     HttpResponse response;
     response.setStatusCode(statusCode);
 
@@ -50,8 +50,7 @@ HttpResponse handleError(int statusCode, const std::string &errorPagePath)
             }
         }
     } else {
-        // Default Error message
-        std::cout << "Message d'erreur par défaut." << std::endl; // Debug
+        // std::cout << "Default error message is used instead of an error page" << std::endl; // Debug
         response.setBody(response.getDefaultReasonPhrase(statusCode));
     }
 

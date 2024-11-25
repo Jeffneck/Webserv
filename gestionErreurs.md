@@ -12,16 +12,89 @@ cgi extension pas ok = err 405 OK
 lancer hello.fake avec l' extension cgi setup a .fake => OK
 lancer hello.py avec l' extension cgi setup a .fake => telecharge hello.py (OK puisque .py est desormais considere comme un static file et en application/octet stream)
 
+# Tests sujet :
 
+test avec un body de taille < client_max_body_size:
+curl -X POST 127.0.0.1:8080/cgi-bin/display.py -H "Content-Type: plain/text" --data "BODY IS HERE write something shorter or longer than body limit"
 
+test avec un body de taille > client_max_body_size (err 413 : entity too large):
+curl -X POST 127.0.0.1:8080/cgi-bin/display.py -H "Content-Type: plain/text" --data "BODY IS HERE loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong"
 
+# 400
+curl -X UNKNOWN 127.0.0.1:8080/
+# 405
+curl -X DELETE 127.0.0.1:8080/cgi-bin/images/logo.png
+# DELETE 204 OK
+touch app/website/uploads/testfile && curl -X DELETE http://127.0.0.1:8080/uploads/testfile
+# 501
+curl -X PUT 127.0.0.1:8080/
+
+# Uploader un fichier de test avec du contenu (201 created)
+echo "\nHERE is the content of the file that will be uploaded" > testfile && \
+curl -X POST http://127.0.0.1:8080/uploads/ \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@testfile" && \
+cat ./app/website/uploads/testfile && \ 
+rm ./app/website/uploads/testfile
+
+# Uploader un fichier de test avec du contenu (201 created) puis le downloader puis le supprimer (le tout avec des requetes HTTP) 
+echo "\nHERE is the content of the file that was uploaded" > testfile && \
+curl -X POST http://127.0.0.1:8080/uploads/ \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@testfile" && \
+curl -X GET http://127.0.0.1:8080/uploads/testfile &&
+curl -X DELETE http://127.0.0.1:8080/uploads/testfile
+
+# Uploader un fichier de test dans un directory interdit
+echo "\nHERE is the content of the file that will be uploaded" > testfile && \
+curl -X POST http://127.0.0.1:8080/images/ \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@testfile" && \
+rm ./testfile
+
+# Utiliser un CGI
+curl 127.0.0.1:8080/cgi-bin/hello.py
+curl 127.0.0.1:8080/cgi-bin/display.py
+curl '127.0.0.1:8080/cgi-bin/display.py?var1=Hello&var2=World&var3=!'
+curl '127.0.0.1:8080/cgi-bin/display.py?var1=Hello&var2=World&var3=!'
+
+curl -X POST 'http://127.0.0.1:8080/cgi-bin/display.py' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'var1=Hello&var2=World&var3=!'
+
+# Montrer que le script s'execute dans le bon directory
+curl 127.0.0.1:8080/cgi-bin/pwd.py   
+
+# Montrer que les erreurs de script sont detectees
+curl 127.0.0.1:8080/cgi-bin/error.py 
+curl 127.0.0.1:8080/cgi-bin/killMe.py 
+curl 127.0.0.1:8080/cgi-bin/infinite.py 
+
+# Montrer que la latence d' un script est geree
+curl 127.0.0.1:8080/cgi-bin/sleep.py 
+
+# il n'est pas possible de lancer 2 serveurs sur le meme port 
+# coller la commande sur 2 terminaux differents, le 1er fonctionne mais le 2 eme indiquera une erreur de binding
+./webserv ./configs/minimal.conf
+
+# il est possible de faire partager un socket a 2 serveurs sur la meme config (on differencie les requetes avec server_name)
+# utiliser 2 terminaux 
+./webserv ./configs/shared.conf
+
+curl http://127.0.0.1:8080 -H "Host: first" 
+curl http://127.0.0.1:8080 -H "Host: second"
+
+# tests de siege (lancer sur un terminal autre que vscode)
+./stress_test.sh
+./stress_test_valgrind.sh
 
 # Checker avec valgrind : 
-valgrind --leak-check=full --track-fds=yes ./test_webserv > stdout 2>stderr
+valgrind --leak-check=full --track-fds=yes ./webserv 
+valgrind --leak-check=full --track-fds=yes ./webserv > stdout 2>stderr
 
 checker les fd : 
 recup l' id du programme
-    ps aux | grep test_webserv | grep -v grep
+    ps aux | grep webserv | grep -v grep
 utiliser ensuite :
     lsof -p <PID>
 
@@ -35,7 +108,8 @@ modifier les Url testees
 CHECKS FONCTIONNELS 
 
 Vérification basique avec curl : OK
-curl http://127.0.0.1:8080 
+curl http://127.0.0.1:8080
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/
 
 Acces au second serveur sur le meme ip:port avec curl : OK
 curl http://127.0.0.1:8080 -H "Host:anotherhost"
@@ -59,10 +133,13 @@ touch app/website/cgi-bin/testfile && curl -X DELETE http://127.0.0.1:8080/cgi-b
 DELETE UN FICHIER INEXISTANT (ERR 404 OK)
 curl -X DELETE http://127.0.0.1:8080/uploads/testfile
 
+DELETE UN FICHIER INACCESSIBLE (ERR 404 OK)
+curl -X DELETE http://127.0.0.1:8080/uploads/testfile
+
 DELETE UN DOSSIER (ERR 400 OK)
-curl -X DELETE http://127.0.0.1:8080/uploads/
+touch ./app/website/uploads/testfile && chmod 000 ./app/website/uploads/testfile && curl -X DELETE http://127.0.0.1:8080/uploads/testfile && chmod 777 ./app/website/uploads/testfile && rm ./app/website/uploads/testfile
 
-
+touch ./app/website/uploads/testfile && chmod 000 ./app/website/uploads/testfile 
 Tester avec des en-têtes personnalisés : (Page servie normalement OK) 
 curl -X GET http://127.0.0.1:8080 -H "Authorization: Bearer token"
 

@@ -40,8 +40,9 @@ void WebServer::start() {
     try {
         listeningHandler_.initialize(servers);
     } catch (const std::runtime_error& e) {
-        std::cerr << "Server initialization failed: " << e.what() << std::endl;
-        throw (e); //webserver will not run
+        std::cerr << "Server initialization failed " << std::endl;
+        // Webserver will not run
+        throw (e);
     }
 
     // Ignore SigPipe (broken pipe signal) 
@@ -50,58 +51,6 @@ void WebServer::start() {
 
     std::cout << "Info : WebServer is ready and is currently managing " << servers.size() << " servers." << std::endl; // debug
 }
-
-void WebServer::setupPollfds(std::vector<struct pollfd> &pollfds,
-        std::vector<ListeningSocket*> &pollListeningSockets,
-        std::vector<DataSocket*> &pollDataSockets,
-        std::vector<int> &pollFdTypes)
-{
-    // Add Listening Sockets to pollfds 
-        //      a ListeningSocket is setup at IP:PORT of every server
-        //      Listening sockets are used to detect new connections and setup Datasockets for every client
-        const std::vector<ListeningSocket*>& listeningSockets = listeningHandler_.getListeningSockets();
-        size_t i;
-        for (i = 0; i < listeningSockets.size(); ++i) {
-            struct pollfd pfd;
-            pfd.fd = listeningSockets[i]->getSocket();
-            pfd.events = POLLIN;
-            pfd.revents = 0;
-            pollfds.push_back(pfd);
-            pollListeningSockets.push_back(listeningSockets[i]);
-            pollDataSockets.push_back(NULL); // Pas de DataSocket pour les ListeningSocket
-            pollFdTypes.push_back(0); // ListeningSocket
-        }
-
-        // Add dataSockets to pollfds for every client :
-        //      a Datasocket is created when a new client connects to a ListeningSocket 
-        //      multiples clients can be handled by 1 server
-        //      Datasockets are used to exchange with clients in HTTP
-        const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
-        for (i = 0; i < dataSockets.size(); ++i) {
-            DataSocket* dataSocket = dataSockets[i];
-            struct pollfd pfd;
-            pfd.fd = dataSocket->getSocket();
-            pfd.events = POLLIN | POLLOUT;
-            pfd.revents = 0;
-            pollfds.push_back(pfd);
-            pollListeningSockets.push_back(NULL); // No ListeningSocket in Datasockets
-            pollDataSockets.push_back(dataSocket);
-            pollFdTypes.push_back(1); // ClientSocket
-
-            // Add Pipe CGI to pollfds when a client request a file that needs to be exec by a CGI (Python here)
-            if (dataSocket->hasCgiProcess() && !dataSocket->isCgiComplete()) {
-                struct pollfd cgiPfd;
-                cgiPfd.fd = dataSocket->getCgiPipeFd();
-                cgiPfd.events = POLLIN;
-                cgiPfd.revents = 0;
-                pollfds.push_back(cgiPfd);
-                pollListeningSockets.push_back(NULL);
-                pollDataSockets.push_back(dataSocket);
-                pollFdTypes.push_back(2); // CgiPipe
-            }
-        }
-}
-
 
 
 /**
@@ -145,8 +94,8 @@ void WebServer::runEventLoop() {
         int timeout = 5000;
         int ret = poll(&pollfds[0], pollfds.size(), timeout);
         if (ret < 0) {
-            cleanUp();
-            return;
+            //poll failed, retry ..
+            continue;
         }
 
         // Events are treated after Multiplexing I/O phase
@@ -200,12 +149,12 @@ void WebServer::runEventLoop() {
                 DataSocket* dataSocket = pollDataSockets[i];
                 //Data sent by CGI
                 if (pollfds[i].revents & POLLIN) {
-                    std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;
+                    // std::cout << GREEN<< "CGI POLLIN EVENT" << RESET <<std::endl;
                     dataSocket->readFromCgiPipe();
                 }
                 //EOF sent by CGI
                 else if (pollfds[i].revents & (POLLHUP)) {
-                    std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;
+                    // std::cout<< GREEN << "CGI POLLHUP EVENT"<< RESET <<std::endl;
                     dataSocket->readFromCgiPipe();
                     dataSocket->closeCgiPipe();
                 }
@@ -226,8 +175,62 @@ void WebServer::runEventLoop() {
     cleanUp();
 }
 
+void WebServer::setupPollfds(std::vector<struct pollfd> &pollfds,
+        std::vector<ListeningSocket*> &pollListeningSockets,
+        std::vector<DataSocket*> &pollDataSockets,
+        std::vector<int> &pollFdTypes)
+{
+    // Add Listening Sockets to pollfds 
+        //      a ListeningSocket is setup at IP:PORT of every server
+        //      Listening sockets are used to detect new connections and setup Datasockets for every client
+        const std::vector<ListeningSocket*>& listeningSockets = listeningHandler_.getListeningSockets();
+        size_t i;
+        for (i = 0; i < listeningSockets.size(); ++i) {
+            struct pollfd pfd;
+            pfd.fd = listeningSockets[i]->getSocket();
+            pfd.events = POLLIN;
+            pfd.revents = 0;//reset revent
+            pollfds.push_back(pfd);
+            pollListeningSockets.push_back(listeningSockets[i]);
+            pollDataSockets.push_back(NULL); // Pas de DataSocket pour les ListeningSocket
+            pollFdTypes.push_back(0); // ListeningSocket
+        }
+
+        // Add dataSockets to pollfds for every client :
+        //      a Datasocket is created when a new client connects to a ListeningSocket 
+        //      multiples clients can be handled by 1 server
+        //      Datasockets are used to exchange with clients in HTTP
+        const std::vector<DataSocket*>& dataSockets = dataHandler_.getClientSockets();
+        for (i = 0; i < dataSockets.size(); ++i) {
+            DataSocket* dataSocket = dataSockets[i];
+            struct pollfd pfd;
+            pfd.fd = dataSocket->getSocket();
+            pfd.events = POLLIN;
+            if(dataSocket->hasDataToSend())
+                pfd.events |= POLLOUT;
+            pfd.revents = 0; //reset revent
+            pollfds.push_back(pfd);
+            pollListeningSockets.push_back(NULL); // No ListeningSocket in Datasockets
+            pollDataSockets.push_back(dataSocket);
+            pollFdTypes.push_back(1); // ClientSocket
+
+            // Add Pipe CGI to pollfds when a client request a file that needs to be exec by a CGI (Python here)
+            if (dataSocket->hasCgiProcess() && !dataSocket->isCgiComplete()) {
+                struct pollfd cgiPfd;
+                cgiPfd.fd = dataSocket->getCgiPipeFd();
+                cgiPfd.events = POLLIN;
+                cgiPfd.revents = 0; //reset revent
+                pollfds.push_back(cgiPfd);
+                pollListeningSockets.push_back(NULL);
+                pollDataSockets.push_back(dataSocket);
+                pollFdTypes.push_back(2); // CgiPipe
+            }
+        }
+}
+
 void WebServer::checkCgiTimeouts() {
     std::vector<DataSocket*>::iterator it = activeCgiSockets_.begin();
+    usleep(500);
     while (it != activeCgiSockets_.end()) {
         DataSocket* dataSocket = *it;
         if (dataSocket->hasCgiProcess()) {

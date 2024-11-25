@@ -68,6 +68,7 @@ bool HttpRequest::parseRequest() {
     std::string line;
 
     while (state_ != COMPLETE && std::getline(stream, line)) {
+        // std::cout << "line :"<< line <<std::endl;//debug
         if (state_ == REQUEST_LINE) {
             if (!handleRequestLine(line)) {
                 return false;
@@ -128,6 +129,7 @@ bool HttpRequest::handleHeaders(const std::string& line) {
         }
         // Record the position of the beginning of the body
         bodyStartPos_ = rawData_.find("\r\n\r\n");
+        // std::cout << "bodystart :" << bodyStartPos_ << std::endl; //debug
         if (bodyStartPos_ != std::string::npos) {
             bodyStartPos_ += 4; // Passer les "\r\n\r\n"
         } else {
@@ -264,7 +266,7 @@ bool HttpRequest::validatePOSTContentType() {
     std::transform(contentType.begin(), contentType.end(), contentType.begin(), ::tolower);
 
     // Vérify if we authorise this content type in our server
-    if (contentType == "application/x-www-form-urlencoded" || contentType == "multipart/form-data") {
+    if (contentType == "application/x-www-form-urlencoded" || contentType == "plain/text" || contentType == "multipart/form-data") {
         return true;
     } else {
         std::cerr << "Unsupported Content-Type: " << contentType << std::endl;

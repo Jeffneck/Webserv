@@ -33,20 +33,18 @@ void ListeningSocketHandler::initialize(const std::vector<Server*>& servers) {
         std::pair<uint32_t, uint16_t> key(host, port);
 
         try {
-            // Vérifier si un ListeningSocket existe déjà pour cette IP:Port
+            // research if a socket already exists at this ip:port
             if (listeningSocketsMap_.find(key) == listeningSocketsMap_.end()) {
-                // Créer un nouveau ListeningSocket
                 ListeningSocket* newSocket = new ListeningSocket(host, port);
                 listeningSocketsMap_[key] = newSocket;
                 addListeningSocket(newSocket);
             }
 
-            // Lier le serveur au ListeningSocket existant
+            // link Listening socket to the server config associated
             listeningSocketsMap_[key]->addServer(server);
         } catch (const std::runtime_error& e) {
-            std::cerr << "Exception while initializing listening socket: " << e.what() << std::endl;
-            // Ici, nous arrêtons le serveur si une erreur critique se produit lors de la création du socket
-            throw std::runtime_error("Critical error: Unable to initialize listening socket, server will stop.");
+            // Webserv will not run, critical error
+            throw e;
         }
     }
 }
